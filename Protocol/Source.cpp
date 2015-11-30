@@ -778,6 +778,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 		switch (LOWORD(wParam))
 		{
 		case IDM_CONNECT:
+			SetFocus(hwnd);
 			Mode = COMMAND_MODE;
 			// Do stuff when "Connect" is selected from the menu
 			OutputDebugString("Connect button or menu item pressed\n");
@@ -819,6 +820,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 
 			break;
 		case IDM_DISCONNECT:
+			SetFocus(hwnd);
 			// Do stuff when "Disconnect" is selected from the menu/btn click
 			// if succesful disconnection do the following:
 			SetWindowText(hConnectToggleBtn, CONNECT);
@@ -828,26 +830,31 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 			OutputDebugString("disconnect btn or menu item clicked\n");
 			break;
 		case IDM_PRIORITY:
+			SetFocus(hwnd);
 			// Do stuff when "Priority" is selected from the menu
 			OutputDebugString("Priority button or menu item pressed\n");
 			break;
 		case IDM_DISPLAY_ON:
+			SetFocus(hwnd);
 			// Allow messages to be printed onto the output window
 			SetWindowText(hDisplayToggleBtn, DISPLAY_OFF);
 			SetWindowLongPtr(hDisplayToggleBtn, GWLP_ID, static_cast<LONG_PTR>(static_cast<DWORD_PTR>(IDM_DISPLAY_OFF)));
 			OutputDebugString("display on btn or menu item clicked\n");
 			break;
 		case IDM_DISPLAY_OFF:
+			SetFocus(hwnd);
 			// Disallow messages to be printed onto the output window
 			SetWindowText(hDisplayToggleBtn, DISPLAY_ON);
 			SetWindowLongPtr(hDisplayToggleBtn, GWLP_ID, static_cast<LONG_PTR>(static_cast<DWORD_PTR>(IDM_DISPLAY_ON)));
 			OutputDebugString("display off btn or menu item clicked\n");
 			break;
 		case IDM_SELECT_FILE:
+			SetFocus(hwnd);
 			selectFile();
 			OutputDebugString("Select File pressed\n");
 			break;
 		case IDM_EXIT:
+			SetFocus(hwnd);
 			OutputDebugString("Exit menu item pressed\n");
 			CloseHandle(hComm);
 			CloseHandle(hThrd);

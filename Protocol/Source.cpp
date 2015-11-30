@@ -12,7 +12,7 @@
 #include "checksum.h"
 #include <chrono>
 // need these at the top:
-enum states { idle, waitPacket, waitAck, waitAck2, wait, sendState, receiveState };
+enum states { idle, waitPacket, waitAck, waitAck2, wait, sendState, receiveState , sendingPacket};
 states status;
 unsigned char depacketizedData[512];
 
@@ -892,6 +892,7 @@ HANDLE selectFile() {
 	return NULL;
 }
 void writingState() {
+	status = sendingPacket;
 	int attempts = 0;
 	unsigned char data[] = "Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.&&&&&";
 	while (attempts++ < 5) {

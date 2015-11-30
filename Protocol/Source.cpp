@@ -241,9 +241,9 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 			do {
 				ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader);
 				if (buffer[0] != 0x00) {
-					OutputDebugString("[[");
+					/*OutputDebugString("[[");
 					OutputDebugString((char*)buffer);
-					OutputDebugString("]]\n");
+					OutputDebugString("]]\n");*/
 					buffer[0] = 0x00;
 				}
 				if (status == waitPacket) {
@@ -253,6 +253,14 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 							if (aPacket != 0x00) {
 								OutputDebugString("Packet received properly");
 								writePacket(ACK);
+								OutputDebugString("\nTHe packet is: ");
+								OutputDebugString("\n");
+								OutputDebugString((char *)aPacket);
+							}
+							else {
+								OutputDebugString("Invalid Packet");
+								readPacket[index + 1] = 0x00;
+								OutputDebugString((char *)readPacket);
 							}
 							status = idle;
 							checkPriority(receiveState);
@@ -300,7 +308,14 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 	return 0;
 }
 void checkStatus(BYTE type) {
-
+	if (type == ACK) {
+		if (status == idle) {
+			writePacket(ACK);
+			status = waitPacket;
+			OutputDebugString("Waiting for packet---");
+				
+		}
+	}
 }
 void checkPriority(states cur) {
 	if (sendPriority && cur == receiveState) {

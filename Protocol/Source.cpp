@@ -12,15 +12,16 @@
 #include "checksum.h"
 
 // need these at the top:
-enum states { idle, waitPacket, waitAck, waitAck2, wait, send, receive };
+enum states { idle, waitPacket, waitAck, waitAck2, wait, sendState, receiveState };
 states status;
 unsigned char depacketizedData[512];
 
 using namespace std;
-void checkPriority();
+void checkPriority(states cur);
 static const int COMMAND_MODE = 1;
 static const int READY_TO_CONNECT_MODE = 2;
 static const int CONNECT_MODE = 3;
+void checkStatus(BYTE type);
 BOOL writePacket(BYTE type);
 void acknowledgeLine();
 //char Name[] = "Radio Comm";
@@ -254,7 +255,7 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 								writePacket(ACK);
 							}
 							status = idle;
-							checkPriority(receive);
+							checkPriority(receiveState);
 							//attempts++;
 							for (int i = 0; i < index; i++) {
 								buffer[i] = 0x00;
@@ -302,13 +303,13 @@ void checkStatus(BYTE type) {
 
 }
 void checkPriority(states cur) {
-	if (sendPriority && cur == receive) {
+	if (sendPriority && cur == receiveState) {
 		//no timeout
 	}
-	else if (sendPriority && cur == send) {
+	else if (sendPriority && cur == sendState) {
 		//short timeout
 	}
-	else if (cur == receive) {
+	else if (cur == receiveState) {
 		//short timeout -- for going from send to idle
 	}
 	else {

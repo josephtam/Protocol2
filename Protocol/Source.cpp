@@ -43,7 +43,7 @@ bool receievePriority = false;
 char str[80] = "";
 char * readBuffer;
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
-
+void writingState();
 //Handle for the output window
 HWND hOutput;
 //Handle for the list view
@@ -891,7 +891,20 @@ HANDLE selectFile() {
 	}
 	return NULL;
 }
-
+void writingState() {
+	int attempts = 0;
+	unsigned char data[] = "Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.&&&&&";
+	while (attempts++ < 5) {
+		writeDataPacket(data);
+		if (timeoutWait(100)) {
+			OutputDebugString("Ack returned back to sender");
+			break;
+		}
+		else {
+			OutputDebugString("Ack not received");
+		}
+	}
+}
 LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 	WPARAM wParam, LPARAM lParam)
 {
@@ -1010,10 +1023,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 				OutputDebugString("Sending an ENQ\n");
 				if (timeoutWait(500)) {
 					unsigned char data[] = "Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.";
-					writeDataPacket(data);
-					if (timeoutWait(500)) {
-						OutputDebugString("Ack returned back to sender");
-					}
+					writingState();
 				}
 				else {
 					OutputDebugString("Timeout, no ack receieved");

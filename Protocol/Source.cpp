@@ -12,11 +12,12 @@
 #include "checksum.h"
 
 // need these at the top:
-
+enum states { idle, waitPacket, waitAck, waitAck2, wait, send, receive };
+states status;
 unsigned char depacketizedData[512];
 
 using namespace std;
-
+void checkPriority();
 static const int COMMAND_MODE = 1;
 static const int READY_TO_CONNECT_MODE = 2;
 static const int CONNECT_MODE = 3;
@@ -36,7 +37,8 @@ unsigned char * packetize(unsigned char * data);
 unsigned char * depacketize(unsigned char * packet);
 unsigned char getSyncBit();
 BOOL writeDataPacket(unsigned char* data);
-
+bool sendPriority = false;
+bool receievePriority = false;
 char str[80] = "";
 char * readBuffer;
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -211,10 +213,11 @@ BYTE* getPacket(BYTE, BYTE[]);
 
 DWORD WINAPI ConnectionRead(LPVOID hwnd)
 {
+	int attempts = 0;
 	BYTE		buffer[516] = { 0x00 };			//Byte array which will hold incoming input.
-	char		readPacket[516] = { 0x00 };		//char array that will hold a packet read in
+	unsigned char		readPacket[516] = { 0x00 };		//char array that will hold a packet read in
 	unsigned int index = 0;						//dynamic index for the readPacket array.
-
+	BOOL startPacket = false;
 	BOOL		readComplete = false;			//Flag to check if a complete packet was read.
 	BOOL		readingPacket = false;			//Flag if a packet was detected.
 	BOOL		success = false;				//Boolean for read success.
@@ -242,8 +245,34 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 					OutputDebugString("]]\n");
 					buffer[0] = 0x00;
 				}
+				if (status == waitPacket) {
+					if (startPacket) {
+						if (buffer[0] == EOT) {
+							unsigned char * aPacket = depacketize(readPacket);
+							if (aPacket != 0x00) {
+								OutputDebugString("Packet received properly");
+								writePacket(ACK);
+							}
+							status = idle;
+							checkPriority(receive);
+							//attempts++;
+							for (int i = 0; i < index; i++) {
+								buffer[i] = 0x00;
+								readPacket[i] = 0x00;
+								startPacket = false;
+								
+							}
+						}
+					}
+					if (buffer[0] == SOH) {
+						startPacket = true;
+						readPacket[index] = buffer[index];
+					}
+					continue;
+				}
 				if (buffer[0] == ACK) {
 					OutputDebugString("ACK received");
+					checkStatus(ACK);
 				}
 				else if (buffer[0] == ENQ) {
 					OutputDebugString("ENQ received");
@@ -269,8 +298,31 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 	CloseHandle(hThrd);
 	return 0;
 }
+void checkStatus(BYTE type) {
+
+}
+void checkPriority(states cur) {
+	if (sendPriority && cur == receive) {
+		//no timeout
+	}
+	else if (sendPriority && cur == send) {
+		//short timeout
+	}
+	else if (cur == receive) {
+		//short timeout -- for going from send to idle
+	}
+	else {
+		//no timeout, go to idle
+	}
+	status = idle;
+}
 void acknowledgeLine() {
 	writePacket(ACK);
+	status = waitPacket;
+	
+
+}
+void waitForPacket() {
 
 }
 
@@ -434,7 +486,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hprevInstance,
 		(HMENU)IDM_CONNECT,
 		(HINSTANCE)GetWindowLong(hwnd, GWL_HINSTANCE),
 		NULL);
-
+		
 	hPriorityBtn = CreateWindow(
 		"BUTTON",
 		"Priority",
@@ -795,6 +847,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 		switch (LOWORD(wParam))
 		{
 		case IDM_CONNECT:
+			status = idle;
 			Mode = COMMAND_MODE;
 			SetFocus(hwnd);
 			// Do stuff when "Connect" is selected from the menu

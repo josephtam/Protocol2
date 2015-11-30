@@ -237,7 +237,10 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 			continue;
 
 		if (WaitCommEvent(hComm, &dwCommEvent, NULL)) {
-
+			if (status = waitPacket) {
+				if (buffer[0] == SOH)
+					startPacket = true;
+			}
 			do {
 				ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader);
 				if (buffer[0] != 0x00) {

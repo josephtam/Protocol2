@@ -241,10 +241,10 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 			do {
 				ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader);
 				if (buffer[0] != 0x00) {
-					/*OutputDebugString("[[");
+					OutputDebugString("[[");
 					OutputDebugString((char*)buffer);
-					OutputDebugString("]]\n");*/
-					buffer[0] = 0x00;
+					OutputDebugString("]]\n");
+					//buffer[0] = 0x00;
 				}
 				if (status == waitPacket) {
 					if (startPacket) {
@@ -277,6 +277,7 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 						startPacket = true;
 						readPacket[index] = buffer[index];
 					}
+					buffer[0] = 0x00;
 					continue;
 				}
 				if (buffer[0] == ACK) {
@@ -293,7 +294,7 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 				else if (buffer[0] == DC2) {
 					OutputDebugString("DC2 received");
 				}
-
+				buffer[0] = 0x00;
 			} while (dwCommEvent);
 
 

@@ -237,76 +237,90 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 			continue;
 
 		if (WaitCommEvent(hComm, &dwCommEvent, NULL)) {
-			if (status = waitPacket) {
-				if (buffer[0] == SOH)
+			/*if (status == waitPacket) {
+				if (buffer[0] == SOH) {
+					readPacket[index++] = buffer[0];
 					startPacket = true;
-			}
-			do {
-				ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader);
-				if (buffer[0] != 0x00) {
-					OutputDebugString("[[");
-					OutputDebugString((char*)buffer);
-					OutputDebugString("]]\n");
-					//buffer[0] = 0x00;
 				}
-				if (status == waitPacket) {
-					OutputDebugString("STATUS = WAITPACKET");
-					if (startPacket) {
-						if (buffer[0] == EOT || buffer[0] == PERIOD) {
-							OutputDebugString("PACKET COMPLETE");
-							unsigned char * aPacket = depacketize(readPacket);
-							if (aPacket != 0x00) {
-								OutputDebugString("Packet received properly");
-								writePacket(ACK);
-								OutputDebugString("\nTHe packet is: ");
-								OutputDebugString("\n");
-								OutputDebugString((char *)aPacket);
+			}*/
+			do {
+				if (!ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader)) {
+					if (GetLastError() == ERROR_IO_PENDING) {
+						WaitForSingleObject(osReader.hEvent, INFINITE);
+					}
+				}
+				
+					if (buffer[0] != 0x00) {
+						OutputDebugString("[[");
+						OutputDebugString((char*)buffer);
+						OutputDebugString("]]\n");
+						//buffer[0] = 0x00;
+					}
+					if (status == waitPacket) {
+						if (startPacket) {
+							OutputDebugString("making packet\n");
+							if (buffer[0] != 0x00) {
+								readPacket[index++] = buffer[0];
+								OutputDebugString("Nothing in buffer");
+
 							}
-							else {
-								OutputDebugString("Invalid Packet");
-								readPacket[index + 1] = 0x00;
-								OutputDebugString((char *)readPacket);
-							}
-							status = idle;
-							checkPriority(receiveState);
-							//attempts++;
-							for (int i = 0; i < index; i++) {
-								buffer[i] = 0x00;
-								readPacket[i] = 0x00;
-								startPacket = false;
-								
+
+							OutputDebugString((char*)readPacket);
+							if (buffer[0] == EOT) {
+								OutputDebugString("PACKET COMPLETE");
+								unsigned char * aPacket = depacketize(readPacket);
+								if (aPacket != 0x00) {
+									OutputDebugString("Packet received properly");
+									writePacket(ACK);
+									OutputDebugString("\nTHe packet is: ");
+									OutputDebugString("\n");
+									OutputDebugString((char *)readPacket);
+								}
+								else {
+									OutputDebugString("Invalid Packet");
+									readPacket[index + 1] = 0x00;
+									OutputDebugString((char *)readPacket);
+								}
+								status = idle;
+								checkPriority(receiveState);
+								//attempts++;
+								for (int i = 0; i < index; i++) {
+									buffer[i] = 0x00;
+									readPacket[i] = 0x00;
+									startPacket = false;
+
+								}
 							}
 						}
+						if (buffer[0] == SOH) {
+							startPacket = true;
+							readPacket[index] = buffer[index++];
+						}
+						buffer[0] = 0x00;
+						continue;
 					}
-					if (buffer[0] == SOH) {
-						startPacket = true;
-						readPacket[index] = buffer[index++];
+					if (buffer[0] == ACK) {
+						OutputDebugString("ACK received");
+						checkStatus(ACK);
+					}
+					else if (buffer[0] == ENQ) {
+						OutputDebugString("ENQ received");
+						acknowledgeLine();
+					}
+					else if (buffer[0] == DC1) {
+						OutputDebugString("DC1 received");
+					}
+					else if (buffer[0] == DC2) {
+						OutputDebugString("DC2 received");
 					}
 					buffer[0] = 0x00;
-					continue;
-				}
-				if (buffer[0] == ACK) {
-					OutputDebugString("ACK received");
-					checkStatus(ACK);
-				}
-				else if (buffer[0] == ENQ) {
-					OutputDebugString("ENQ received");
-					acknowledgeLine();
-				}
-				else if (buffer[0] == DC1) {
-					OutputDebugString("DC1 received");
-				}
-				else if (buffer[0] == DC2) {
-					OutputDebugString("DC2 received");
-				}
-				buffer[0] = 0x00;
-			} while (dwCommEvent);
+				} while (dwCommEvent);
 
 
+			
+
+			buffer[0] = 0x00;
 		}
-
-		buffer[0] = 0x00;
-
 	}
 	OutputDebugString("Connection Read: Read thread ended\n");
 	CloseHandle(osReader.hEvent); //Close the event.

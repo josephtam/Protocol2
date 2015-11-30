@@ -7,3 +7,4 @@
 #define DC2		'\x12'
 #define SYNC0	'\x0F'
 #define SYNC1	'\xF0'
+#define PERIOD  '\x2E'

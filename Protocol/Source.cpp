@@ -249,7 +249,7 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 				if (status == waitPacket) {
 					OutputDebugString("STATUS = WAITPACKET");
 					if (startPacket) {
-						if (buffer[0] == EOT) {
+						if (buffer[0] == EOT || buffer[0] == PERIOD) {
 							OutputDebugString("PACKET COMPLETE");
 							unsigned char * aPacket = depacketize(readPacket);
 							if (aPacket != 0x00) {

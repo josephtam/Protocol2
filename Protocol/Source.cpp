@@ -247,6 +247,7 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 					//buffer[0] = 0x00;
 				}
 				if (status == waitPacket) {
+					OutputDebugString("STATUS = WAITPACKET");
 					if (startPacket) {
 						if (buffer[0] == EOT) {
 							OutputDebugString("PACKET COMPLETE");

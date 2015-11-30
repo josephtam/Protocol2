@@ -10,7 +10,7 @@
 #include "codes.h"
 #include <commctrl.h>
 #include "checksum.h"
-
+#include <chrono>
 // need these at the top:
 enum states { idle, waitPacket, waitAck, waitAck2, wait, sendState, receiveState };
 states status;
@@ -237,12 +237,7 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 			continue;
 
 		if (WaitCommEvent(hComm, &dwCommEvent, NULL)) {
-			/*if (status == waitPacket) {
-				if (buffer[0] == SOH) {
-					readPacket[index++] = buffer[0];
-					startPacket = true;
-				}
-			}*/
+			
 			do {
 				if (!ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader)) {
 					if (GetLastError() == ERROR_IO_PENDING) {
@@ -304,8 +299,11 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 						checkStatus(ACK);
 					}
 					else if (buffer[0] == ENQ) {
-						OutputDebugString("ENQ received");
-						acknowledgeLine();
+						if (status == idle) {
+							OutputDebugString("ENQ received");
+							acknowledgeLine();
+						}
+					
 					}
 					else if (buffer[0] == DC1) {
 						OutputDebugString("DC1 received");
@@ -356,6 +354,24 @@ void acknowledgeLine() {
 	writePacket(ACK);
 	status = waitPacket;
 	
+
+}
+bool timeoutWait(DWORD ms) {
+	SetCommMask(hComm, EV_RXCHAR);
+	DWORD dwCommEvent;
+	unsigned char buffer[2];
+	OVERLAPPED	osReader = { 0 };
+	osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	if (WaitCommEvent(hComm, &dwCommEvent, NULL)) {
+		if (!ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader)) {
+			if (GetLastError() == ERROR_IO_PENDING) {
+				if (!WaitForSingleObject(osReader.hEvent, ms))
+					return false;
+
+			}
+		}
+	}
+	return true;
 
 }
 void waitForPacket() {
@@ -983,7 +999,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 			sprintf_s(temp, "%c", TEXT(wParam));
 			if ((char)wParam == 'e') {
 				OutputDebugString("Sending an ENQ\n");
-				writePacket(ENQ);
+				if (timeoutWait(500)) {
+					writePacket(ENQ);
+				}
+				else {
+					OutputDebugString("Timeout, no ack receieved");
+				}
 			}
 			else if ((char)wParam == 'a') {
 				OutputDebugString("Sending an ACK\n");

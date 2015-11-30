@@ -249,6 +249,7 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 				if (status == waitPacket) {
 					if (startPacket) {
 						if (buffer[0] == EOT) {
+							OutputDebugString("PACKET COMPLETE");
 							unsigned char * aPacket = depacketize(readPacket);
 							if (aPacket != 0x00) {
 								OutputDebugString("Packet received properly");
@@ -275,7 +276,7 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 					}
 					if (buffer[0] == SOH) {
 						startPacket = true;
-						readPacket[index] = buffer[index];
+						readPacket[index] = buffer[index++];
 					}
 					buffer[0] = 0x00;
 					continue;
@@ -969,6 +970,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 			else if ((char)wParam == 'a') {
 				OutputDebugString("Sending an ACK\n");
 				writePacket(ACK);
+				status = waitAck;
 			}
 			else if ((char)wParam == '1') {
 				OutputDebugString("Sending an DC1\n");

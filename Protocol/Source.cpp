@@ -227,9 +227,11 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 	DWORD		dwRead, dwCommEvent, dwRes;		//event checkers
 	OVERLAPPED	osReader = { 0 };				//Contains information used in asynchronous 
 												//(or overlapped) input and output (I/O).
-
+	if (!SetCommMask(hComm, EV_RXCHAR)) {
+		OutputDebugString("Set comm mask failed");
+	}
 	while (Mode > COMMAND_MODE) {
-		if (Mode == READY_TO_CONNECT_MODE || !SetCommMask(hComm, EV_RXCHAR))
+		if (Mode == READY_TO_CONNECT_MODE)
 			continue;
 
 		osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -277,7 +279,8 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 									OutputDebugString((char *)readPacket);
 								}
 								status = idle;
-								checkPriority(receiveState);
+								writePacket(ACK);
+								//checkPriority(receiveState);
 								//attempts++;
 								for (int i = 0; i < index; i++) {
 									buffer[i] = 0x00;
@@ -358,19 +361,24 @@ void acknowledgeLine() {
 }
 bool timeoutWait(DWORD ms) {
 	SetCommMask(hComm, EV_RXCHAR);
-	DWORD dwCommEvent;
-	unsigned char buffer[2];
+	DWORD dwCommEvent = 0;
+	unsigned char buffer[2] = { 0 };
 	OVERLAPPED	osReader = { 0 };
 	osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-	if (WaitCommEvent(hComm, &dwCommEvent, NULL)) {
+	if (WaitCommEvent(hComm, &dwCommEvent, &osReader)) {
+		
+	}
+	else {
+		//look into waitforsingleobject return value
 		if (!ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader)) {
 			if (GetLastError() == ERROR_IO_PENDING) {
-				if (!WaitForSingleObject(osReader.hEvent, ms))
+				if(WaitForSingleObject(osReader.hEvent, ms))
 					return false;
-
 			}
 		}
 	}
+
+	OutputDebugString("Received ack");
 	return true;
 
 }
@@ -998,9 +1006,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 			char temp[516];
 			sprintf_s(temp, "%c", TEXT(wParam));
 			if ((char)wParam == 'e') {
+				writePacket(ENQ);
 				OutputDebugString("Sending an ENQ\n");
 				if (timeoutWait(500)) {
-					writePacket(ENQ);
+					unsigned char data[] = "Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.";
+					writeDataPacket(data);
+					if (timeoutWait(500)) {
+						OutputDebugString("Ack returned back to sender");
+					}
 				}
 				else {
 					OutputDebugString("Timeout, no ack receieved");

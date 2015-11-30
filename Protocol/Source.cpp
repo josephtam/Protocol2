@@ -20,11 +20,12 @@ using namespace std;
 static const int COMMAND_MODE = 1;
 static const int READY_TO_CONNECT_MODE = 2;
 static const int CONNECT_MODE = 3;
-
+BOOL writePacket(BYTE type);
+void acknowledgeLine();
 //char Name[] = "Radio Comm";
 //LPCSTR lpszCommName = "COM1";
 COMMCONFIG	cc;			//Communcation configurations
-//HANDLE		hComm;		//Handle for Serial Port
+						//HANDLE		hComm;		//Handle for Serial Port
 HANDLE		hThrd;		//Thread Handle for reading
 int			Mode = COMMAND_MODE;	//Global variable to switch between modes.
 
@@ -102,82 +103,82 @@ overlapped and
 */
 DWORD WINAPI ConnectionRead(LPVOID); // prototype for a thread read
 
-/*
-=========================================================================
-FUNCTION:		ConnectionWrite
+									 /*
+									 =========================================================================
+									 FUNCTION:		ConnectionWrite
 
-DATE:			September 26, 2015
+									 DATE:			September 26, 2015
 
-REVISIONS:		September 27, 2015
-First attempt of letting individual character output.
-September 30, 2015
-Allowed for threading.
-October 3, 2015
-Removed threading for less processor usage and
-simplicity.
-October 4, 2015
-Visual code clean-up, no major changes.
+									 REVISIONS:		September 27, 2015
+									 First attempt of letting individual character output.
+									 September 30, 2015
+									 Allowed for threading.
+									 October 3, 2015
+									 Removed threading for less processor usage and
+									 simplicity.
+									 October 4, 2015
+									 Visual code clean-up, no major changes.
 
-DESIGNER:		Tyler Trepanier-Bracken
+									 DESIGNER:		Tyler Trepanier-Bracken
 
-PROGRAMMER:		Tyler Trepanier-Bracken
+									 PROGRAMMER:		Tyler Trepanier-Bracken
 
-INTERFACE:		BOOL ConnectionWrite(
-HWND hwnd,
-WPARAM wParam)
+									 INTERFACE:		BOOL ConnectionWrite(
+									 HWND hwnd,
+									 WPARAM wParam)
 
-PARAMETERS:		HWND hwnd
-Window designed to be emptied of painted objects.
+									 PARAMETERS:		HWND hwnd
+									 Window designed to be emptied of painted objects.
 
-RETURNS:		TRUE
-Successful character output to external device.
-FALSE
-Unsuccessful character output.
+									 RETURNS:		TRUE
+									 Successful character output to external device.
+									 FALSE
+									 Unsuccessful character output.
 
 
-NOTES:
-This function takes in a windows object and clears the screen using many
-space characters for the entire size of the window.
+									 NOTES:
+									 This function takes in a windows object and clears the screen using many
+									 space characters for the entire size of the window.
 
-Requires two definitions: MAX_HEIGHT and MAX_WIDTH, these are the
-window's size.
-=========================================================================
-*/
+									 Requires two definitions: MAX_HEIGHT and MAX_WIDTH, these are the
+									 window's size.
+									 =========================================================================
+									 */
 BOOL ConnectionWrite(HWND, BYTE[], size_t); // prototype for a thread write
 
-/*
-=========================================================================
-FUNCTION:		Open Port
+											/*
+											=========================================================================
+											FUNCTION:		Open Port
 
-DATE:			September 26, 2015
+											DATE:			September 26, 2015
 
-REVISIONS:		October 4, 2015
-Made
+											REVISIONS:		October 4, 2015
+											Made
 
-DESIGNER:		Tyler Trepanier-Bracken
+											DESIGNER:		Tyler Trepanier-Bracken
 
-PROGRAMMER:		Tyler Trepanier-Bracken
+											PROGRAMMER:		Tyler Trepanier-Bracken
 
-INTERFACE:		BOOL OpenPort(
-HWND hwnd)
+											INTERFACE:		BOOL OpenPort(
+											HWND hwnd)
 
-PARAMETERS:		HWND hwnd
-Window where error messages will be printed on.
+											PARAMETERS:		HWND hwnd
+											Window where error messages will be printed on.
 
-RETURNS:		FALSE,
-Failed opening the port for overlapped reading
-and writing.
-TRUE
-Successful port opening for overlapped reading and
-writing.
-NOTES:
-Accepts a window (for displaying errors) and the combined port settings
-for opening a serial port for reading and writing.
+											RETURNS:		FALSE,
+											Failed opening the port for overlapped reading
+											and writing.
+											TRUE
+											Successful port opening for overlapped reading and
+											writing.
+											NOTES:
+											Accepts a window (for displaying errors) and the combined port settings
+											for opening a serial port for reading and writing.
 
-Returns failure if BuildCommDCB(), GetCommState(), SetCommState()
-or SetCommTimeouts() fails. Success overwise.
-=========================================================================
-*/
+											Returns failure if BuildCommDCB(), GetCommState(), SetCommState()
+											or SetCommTimeouts() fails. Success overwise.
+											=========================================================================
+											*/
 BOOL OpenPort(HWND);
 
 /*
@@ -186,7 +187,7 @@ FUNCTION:		Get Packet
 
 DATE:			November 27, 2015
 
-REVISIONS:		
+REVISIONS:
 
 DESIGNER:		Tyler Trepanier-Bracken
 
@@ -199,7 +200,7 @@ Decides what type of packet to grab
 
 RETURNS:		char*,
 Pointer to an char array that contains a ENQ, ACK, DC1 or DC2 packet
-depending 
+depending
 
 NOTES:
 Depending on the parameter that is passed through, the returned packet
@@ -213,38 +214,51 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 	BYTE		buffer[516] = { 0x00 };			//Byte array which will hold incoming input.
 	char		readPacket[516] = { 0x00 };		//char array that will hold a packet read in
 	unsigned int index = 0;						//dynamic index for the readPacket array.
-	
+
 	BOOL		readComplete = false;			//Flag to check if a complete packet was read.
 	BOOL		readingPacket = false;			//Flag if a packet was detected.
 	BOOL		success = false;				//Boolean for read success.
 	BOOL		waitRead = false;				//Flag to check if reading is incomplete
-	
+
 	DWORD		dwRead, dwCommEvent, dwRes;		//event checkers
 	OVERLAPPED	osReader = { 0 };				//Contains information used in asynchronous 
 												//(or overlapped) input and output (I/O).
-		
+
 	while (Mode > COMMAND_MODE) {
 		if (Mode == READY_TO_CONNECT_MODE || !SetCommMask(hComm, EV_RXCHAR))
 			continue;
-		
+
 		osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 		if (osReader.hEvent == NULL)
 			continue;
 
 		if (WaitCommEvent(hComm, &dwCommEvent, NULL)) {
-			
+
 			do {
 				ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader);
-				if(buffer[0] != 0x00){
+				if (buffer[0] != 0x00) {
 					OutputDebugString("[[");
 					OutputDebugString((char*)buffer);
 					OutputDebugString("]]\n");
 					buffer[0] = 0x00;
 				}
+				if (buffer[0] == ACK) {
+					OutputDebugString("ACK received");
+				}
+				else if (buffer[0] == ENQ) {
+					OutputDebugString("ENQ received");
+					acknowledgeLine();
+				}
+				else if (buffer[0] == DC1) {
+					OutputDebugString("DC1 received");
+				}
+				else if (buffer[0] == DC2) {
+					OutputDebugString("DC2 received");
+				}
 
 			} while (dwCommEvent);
-		
-			
+
+
 		}
 
 		buffer[0] = 0x00;
@@ -255,7 +269,10 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 	CloseHandle(hThrd);
 	return 0;
 }
+void acknowledgeLine() {
+	writePacket(ACK);
 
+}
 
 BOOL OpenPort(HWND hwnd)
 {
@@ -267,12 +284,12 @@ BOOL OpenPort(HWND hwnd)
 		Mode = COMMAND_MODE;
 		return FALSE;
 	}
-	
+
 	/*if (!SetCommState(hComm, &cc.dcb))
 	{
-		OutputDebugString("OpenPort: SetCommState failed\n");
-		Mode = COMMAND_MODE;
-		return FALSE;
+	OutputDebugString("OpenPort: SetCommState failed\n");
+	Mode = COMMAND_MODE;
+	return FALSE;
 	}*/
 
 	//Attempt to create the TimeOut for reading and writing purposes.
@@ -285,9 +302,9 @@ BOOL OpenPort(HWND hwnd)
 
 	if (!SetCommTimeouts(hComm, &TimeOut))
 	{
-		OutputDebugString("OpenPort: SetCommTimeouts failed\n");
-		Mode = COMMAND_MODE;
-		return FALSE;
+	OutputDebugString("OpenPort: SetCommTimeouts failed\n");
+	Mode = COMMAND_MODE;
+	return FALSE;
 	}*/
 
 	return TRUE;
@@ -307,8 +324,8 @@ BOOL ConnectionWrite(HWND hwnd, BYTE message[], size_t size) // need this to poi
 	if (osWrite.hEvent == NULL)
 		return FALSE; //things went boom no good
 
-	//Temporary, will not need this line after changing parameters!!!
-	//sprintf_s(Input, "%c", (char)wParam);
+					  //Temporary, will not need this line after changing parameters!!!
+					  //sprintf_s(Input, "%c", (char)wParam);
 	BYTE works[2] = { SOH, ACK };
 	while (index < size) {
 		writeSuccess = FALSE;
@@ -404,7 +421,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hprevInstance,
 
 	hwnd = CreateWindow(Name, Name, WS_OVERLAPPEDWINDOW, 10, 10,
 		700, 500, NULL, NULL, hInst, NULL);
-	
+
 	// Creating the output window
 	hOutput = CreateOutputWindow(hwnd);
 
@@ -731,7 +748,7 @@ HANDLE selectFile() {
 	char szFile[260];       // buffer for file name
 	HANDLE hf;              // file handle
 
-	// Initialize OPENFILENAME
+							// Initialize OPENFILENAME
 	ZeroMemory(&ofn, sizeof(ofn));
 	ofn.lStructSize = sizeof(ofn);
 	ofn.hwndOwner = hwnd;
@@ -778,8 +795,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 		switch (LOWORD(wParam))
 		{
 		case IDM_CONNECT:
-			SetFocus(hwnd);
 			Mode = COMMAND_MODE;
+			SetFocus(hwnd);
 			// Do stuff when "Connect" is selected from the menu
 			OutputDebugString("Connect button or menu item pressed\n");
 
@@ -820,7 +837,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 
 			break;
 		case IDM_DISCONNECT:
-			SetFocus(hwnd);
 			// Do stuff when "Disconnect" is selected from the menu/btn click
 			// if succesful disconnection do the following:
 			SetWindowText(hConnectToggleBtn, CONNECT);
@@ -830,31 +846,26 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 			OutputDebugString("disconnect btn or menu item clicked\n");
 			break;
 		case IDM_PRIORITY:
-			SetFocus(hwnd);
 			// Do stuff when "Priority" is selected from the menu
 			OutputDebugString("Priority button or menu item pressed\n");
 			break;
 		case IDM_DISPLAY_ON:
-			SetFocus(hwnd);
 			// Allow messages to be printed onto the output window
 			SetWindowText(hDisplayToggleBtn, DISPLAY_OFF);
 			SetWindowLongPtr(hDisplayToggleBtn, GWLP_ID, static_cast<LONG_PTR>(static_cast<DWORD_PTR>(IDM_DISPLAY_OFF)));
 			OutputDebugString("display on btn or menu item clicked\n");
 			break;
 		case IDM_DISPLAY_OFF:
-			SetFocus(hwnd);
 			// Disallow messages to be printed onto the output window
 			SetWindowText(hDisplayToggleBtn, DISPLAY_ON);
 			SetWindowLongPtr(hDisplayToggleBtn, GWLP_ID, static_cast<LONG_PTR>(static_cast<DWORD_PTR>(IDM_DISPLAY_ON)));
 			OutputDebugString("display off btn or menu item clicked\n");
 			break;
 		case IDM_SELECT_FILE:
-			SetFocus(hwnd);
 			selectFile();
 			OutputDebugString("Select File pressed\n");
 			break;
 		case IDM_EXIT:
-			SetFocus(hwnd);
 			OutputDebugString("Exit menu item pressed\n");
 			CloseHandle(hComm);
 			CloseHandle(hThrd);

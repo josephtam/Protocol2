@@ -44,8 +44,10 @@ unsigned char * depacketize(unsigned char * packet);
 unsigned char getSyncBit();
 BOOL writeDataPacket(unsigned char* data);
 bool sendPriority = false;
+void writePackets();
 bool receievePriority = false;
 char str[80] = "";
+BOOL readInPacket();
 bool timeoutWait(DWORD ms);
 void acknowledgeEnq();
 char * readBuffer;
@@ -246,14 +248,57 @@ bool timeoutWait(DWORD ms) {
 	return false;
 
 }
-boolean checkForSoh() {
+boolean checkForSoh(DWORD ms) {
+	OutputDebugString("In idleReadEnq");
+	SetCommMask(hComm, EV_RXCHAR);
+	DWORD dwCommEvent = 0;
+	unsigned char buffer[2] = { 0 };
+	OVERLAPPED	osReader = { 0 };
+	osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+
+	if (WaitCommEvent(hComm, &dwCommEvent, NULL)) {
+		OutputDebugString("event received");
+		if (dwCommEvent == 0) {
+			OutputDebugString("Killing thrad");
+			ExitThread(0);
+		}
+		do {
+			buffer[0] = 0x00;
+			if (!ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader)) {
+				if (GetLastError() == ERROR_IO_PENDING) {
+					WaitForSingleObject(osReader.hEvent, ms);
+				}
+
+			}
+			if (buffer[0] == ENQ) {
+				OutputDebugString("\nHAD TO SEND BACK ACK OK");
+				writePacket(ACK);
+			}
+			
+		} while (buffer[0] != SOH);
+		OutputDebugString("\nSOH RECEIVED OK");
+
+
+
+	}
+
+	
 	return true;
 }
+
 DWORD WINAPI readThread(LPVOID hwnd) {
+	int attempts = 0;
 	idleReadEnq();
 	OutputDebugString("\nBACK IN IDLE OK");
 	acknowledgeEnq();
-	checkForSoh();
+	
+	while (!checkForSoh(READ_TIMEOUT)) {
+		if (attempts++ == 4) {
+			OutputDebugString("Giving up on reading SOH OK");
+			break;
+		}
+	}
+	readInPacket();
 	return 0;
 }
 DWORD WINAPI writeThread(LPVOID hwnd) {
@@ -262,6 +307,8 @@ DWORD WINAPI writeThread(LPVOID hwnd) {
 		OutputDebugString("\nACK not recieved back ok");
 		writePacket(ENQ);
 	}
+	OutputDebugString("\nACK BACK IN WRITETHREAD OK");
+	writePackets();
 	return 0;
 }
 void acknowledgeEnq() {
@@ -269,6 +316,10 @@ void acknowledgeEnq() {
 	
 	OutputDebugString("\nSENDING BACK ACK OK");
 
+}
+void writePackets() {
+	unsigned char data[] = "Hello, this is a test. I hope it works because I really dont like this and want to sleep all day...";
+	writeDataPacket(data);
 }
 boolean idleReadEnq() {
 	OutputDebugString("In idleReadEnq");
@@ -285,6 +336,7 @@ boolean idleReadEnq() {
 			ExitThread(0);
 		}
 		do {
+			buffer[0] = 0x00;
 			if (!ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader)) {
 				if (GetLastError() == ERROR_IO_PENDING) {
 					WaitForSingleObject(osReader.hEvent, INFINITE);
@@ -315,13 +367,12 @@ void sendEnq() {
 		//OutputDebugString("Timeout, no ack receieved");
 	//}
 }
-
-DWORD WINAPI ConnectionRead(LPVOID hwnd)
+BOOL readInPacket()
 {
 	int attempts = 0;
 	BYTE		buffer[516] = { 0x00 };			//Byte array which will hold incoming input.
 	unsigned char		readPacket[516] = { 0x00 };		//char array that will hold a packet read in
-	unsigned int index = 0;						//dynamic index for the readPacket array.
+	unsigned int index = 1;						//dynamic index for the readPacket array.
 	BOOL startPacket = false;
 	BOOL		readComplete = false;			//Flag to check if a complete packet was read.
 	BOOL		readingPacket = false;			//Flag if a packet was detected.
@@ -330,7 +381,9 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 
 	DWORD		dwRead, dwCommEvent, dwRes;		//event checkers
 	OVERLAPPED	osReader = { 0 };				//Contains information used in asynchronous 
-												//(or overlapped) input and output (I/O).
+	readPacket[0] = SOH;									//(or overlapped) input and output (I/O).
+	OutputDebugString("\nAt the top of readInPacket");
+	
 	if (!SetCommMask(hComm, EV_RXCHAR)) {
 		OutputDebugString("Set comm mask failed");
 	}
@@ -357,83 +410,47 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 						OutputDebugString("]]\n");
 						//buffer[0] = 0x00;
 					}
-					if (status == waitPacket) {
-						if (startPacket) {
-							OutputDebugString("making packet\n");
+					
 							if (buffer[0] != 0x00) {
 								readPacket[index++] = buffer[0];
-								OutputDebugString("Nothing in buffer");
-
 							}
 
 							OutputDebugString((char*)readPacket);
 							if (buffer[0] == EOT) {
-								OutputDebugString("PACKET COMPLETE");
+								OutputDebugString("\nPACKET COMPLETE");
 								unsigned char * aPacket = depacketize(readPacket);
 								if (aPacket != 0x00) {
-									OutputDebugString("Packet received properly");
+									OutputDebugString("\nPacket received properly");
 									writePacket(ACK);
 									OutputDebugString("\nTHe packet is: ");
 									OutputDebugString("\n");
 									OutputDebugString((char *)readPacket);
-									OutputDebugString("waffles\n");
+									CloseHandle(osReader.hEvent);
+									return true;
+
 								}
 								else {
-									OutputDebugString("Invalid Packet");
+									OutputDebugString("\nInvalid Packet");
 									readPacket[index + 1] = 0x00;
 									OutputDebugString((char *)readPacket);
-									OutputDebugString("panakes\n");
-								}
-								status = idle;
-								writePacket(ACK);
-								//checkPriority(receiveState);
-								//attempts++;
-								for (int i = 0; i < index; i++) {
-									buffer[i] = 0x00;
-									readPacket[i] = 0x00;
-									startPacket = false;
-									index = 0;
+									CloseHandle(osReader.hEvent);
+									return false;
 
 								}
 							}
-						}
-						if (buffer[0] == SOH) {
-							startPacket = true;
-							readPacket[index] = buffer[index++];
-						}
-						buffer[0] = 0x00;
-						continue;
-					}
-					if (buffer[0] == ACK) {
-						OutputDebugString("ACK received");
-						checkStatus(ACK);
-					}
-					else if (buffer[0] == ENQ) {
-						if (status == idle) {
-							OutputDebugString("ENQ received");
-							acknowledgeLine();
-						}
-
-					}
-					else if (buffer[0] == DC1) {
-						OutputDebugString("DC1 received");
-					}
-					else if (buffer[0] == DC2) {
-						OutputDebugString("DC2 received");
-					}
+								
+								
+								
+						
 					buffer[0] = 0x00;
 				} while (dwCommEvent);
 
 
-
-
-				buffer[0] = 0x00;
-			
 		}
 	}
 	OutputDebugString("Connection Read: Read thread ended\n");
-	CloseHandle(osReader.hEvent); //Close the event.
-	CloseHandle(hThrd);
+	 //Close the event.
+	
 	return 0;
 }
 void checkStatus(BYTE type) {

@@ -401,7 +401,10 @@ BOOL readInPacket()
 				do {
 					if (!ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader)) {
 						if (GetLastError() == ERROR_IO_PENDING) {
-							WaitForSingleObject(osReader.hEvent, INFINITE);
+							if (!WaitForSingleObject(osReader.hEvent, READ_TIMEOUT)) {
+								OutputDebugString("\nNO cahracters coming ok");
+								return 0;
+							}
 						}
 					}
 

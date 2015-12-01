@@ -212,6 +212,40 @@ will be accompanied with the associated parameter.
 */
 BYTE* getPacket(BYTE, BYTE[]);
 
+DWORD WINAPI readThread(LPVOID hwnd) {
+	idleReadEnq();
+	OutputDebugString("BACK IN IDLE OK");
+}
+
+boolean idleReadEnq() {
+	OutputDebugString("In idleReadEnq");
+	SetCommMask(hComm, EV_RXCHAR);
+	DWORD dwCommEvent = 0;
+	unsigned char buffer[2] = { 0 };
+	OVERLAPPED	osReader = { 0 };
+	osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+
+	if (WaitCommEvent(hComm, &dwCommEvent, NULL)) {
+		do {
+			if (!ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader)) {
+				if (GetLastError() == ERROR_IO_PENDING) {
+					WaitForSingleObject(osReader.hEvent, INFINITE);
+				}
+
+			}
+		} while (buffer[0] != ENQ);
+		OutputDebugString("ENQ RECEIVED OK");
+
+
+
+	}
+	
+	
+}
+DWORD WINAPI writeThread(LPVOID hwnd) {
+
+}
+
 DWORD WINAPI ConnectionRead(LPVOID hwnd)
 {
 	int attempts = 0;
@@ -240,13 +274,13 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 
 		if (WaitCommEvent(hComm, &dwCommEvent, NULL)) {
 			
-			do {
-				if (!ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader)) {
-					if (GetLastError() == ERROR_IO_PENDING) {
-						WaitForSingleObject(osReader.hEvent, INFINITE);
+				do {
+					if (!ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader)) {
+						if (GetLastError() == ERROR_IO_PENDING) {
+							WaitForSingleObject(osReader.hEvent, INFINITE);
+						}
 					}
-				}
-				
+
 					if (buffer[0] != 0x00) {
 						OutputDebugString("[[");
 						OutputDebugString((char*)buffer);
@@ -272,11 +306,13 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 									OutputDebugString("\nTHe packet is: ");
 									OutputDebugString("\n");
 									OutputDebugString((char *)readPacket);
+									OutputDebugString("waffles\n");
 								}
 								else {
 									OutputDebugString("Invalid Packet");
 									readPacket[index + 1] = 0x00;
 									OutputDebugString((char *)readPacket);
+									OutputDebugString("panakes\n");
 								}
 								status = idle;
 								writePacket(ACK);
@@ -286,6 +322,7 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 									buffer[i] = 0x00;
 									readPacket[i] = 0x00;
 									startPacket = false;
+									index = 0;
 
 								}
 							}
@@ -306,7 +343,7 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 							OutputDebugString("ENQ received");
 							acknowledgeLine();
 						}
-					
+
 					}
 					else if (buffer[0] == DC1) {
 						OutputDebugString("DC1 received");
@@ -318,9 +355,10 @@ DWORD WINAPI ConnectionRead(LPVOID hwnd)
 				} while (dwCommEvent);
 
 
-			
 
-			buffer[0] = 0x00;
+
+				buffer[0] = 0x00;
+			
 		}
 	}
 	OutputDebugString("Connection Read: Read thread ended\n");
@@ -954,11 +992,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 			}
 
 			//This creates the read thread (continuous loop that reads input)
-			hThrd = CreateThread(NULL, 0, ConnectionRead, (LPVOID)hwnd,
+			/*hThrd = CreateThread(NULL, 0, ConnectionRead, (LPVOID)hwnd,
 				CREATE_SUSPENDED, &ReadInput);
 			SetThreadPriority(hThrd, THREAD_PRIORITY_HIGHEST);
 			ResumeThread(hThrd);
-
+			*/
+			hThrd = CreateThread(NULL, 0, readThread, (LPVOID)hwnd,
+				CREATE_SUSPENDED, &ReadInput);
+			SetThreadPriority(hThrd, THREAD_PRIORITY_HIGHEST);
+			ResumeThread(hThrd);
 			//Allow for CONNECTION_MODE
 			Mode = CONNECT_MODE;
 

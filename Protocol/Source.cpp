@@ -15,7 +15,9 @@
 enum states { idle, waitPacket, waitAck, waitAck2, wait, sendState, receiveState , sendingPacket};
 states status;
 unsigned char depacketizedData[512];
+DWORD WINAPI readThread(LPVOID hwnd);
 
+boolean idleReadEnq();
 using namespace std;
 void checkPriority(states cur);
 static const int COMMAND_MODE = 1;
@@ -215,6 +217,7 @@ BYTE* getPacket(BYTE, BYTE[]);
 DWORD WINAPI readThread(LPVOID hwnd) {
 	idleReadEnq();
 	OutputDebugString("BACK IN IDLE OK");
+	return 0;
 }
 
 boolean idleReadEnq() {
@@ -240,10 +243,10 @@ boolean idleReadEnq() {
 
 	}
 	
-	
+	return true;
 }
 DWORD WINAPI writeThread(LPVOID hwnd) {
-
+	return 0;
 }
 
 DWORD WINAPI ConnectionRead(LPVOID hwnd)

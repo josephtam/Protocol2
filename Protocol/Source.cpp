@@ -308,7 +308,8 @@ DWORD WINAPI writeThread(LPVOID hwnd) {
 		writePacket(ENQ);
 	}
 	OutputDebugString("\nACK BACK IN WRITETHREAD OK");
-	writePackets();
+	//writePackets();
+	writePacket(SOH);
 	return 0;
 }
 void acknowledgeEnq() {
@@ -447,8 +448,10 @@ BOOL readInPacket()
 				} while (dwCommEvent);
 			}
 			else {
-				if (WaitForSingleObject(osReader.hEvent, READ_TIMEOUT))
+				if (WaitForSingleObject(osReader.hEvent, READ_TIMEOUT)) {
+					OutputDebugString("\nRead Timeout Ok??");
 					return false;
+				}
 
 			}
 		

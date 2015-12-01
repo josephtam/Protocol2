@@ -395,8 +395,8 @@ BOOL readInPacket()
 		if (osReader.hEvent == NULL)
 			continue;
 
-		if (WaitCommEvent(hComm, &dwCommEvent, NULL)) {
-			
+		if (!WaitCommEvent(hComm, &dwCommEvent, &osReader)) {
+			if (GetLastError() == ERROR_IO_PENDING) {
 				do {
 					if (!ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader)) {
 						if (GetLastError() == ERROR_IO_PENDING) {
@@ -410,40 +410,50 @@ BOOL readInPacket()
 						OutputDebugString("]]\n");
 						//buffer[0] = 0x00;
 					}
-					
-							if (buffer[0] != 0x00) {
-								readPacket[index++] = buffer[0];
-							}
 
-							OutputDebugString((char*)readPacket);
-							if (buffer[0] == EOT) {
-								OutputDebugString("\nPACKET COMPLETE");
-								unsigned char * aPacket = depacketize(readPacket);
-								if (aPacket != 0x00) {
-									OutputDebugString("\nPacket received properly");
-									writePacket(ACK);
-									OutputDebugString("\nTHe packet is: ");
-									OutputDebugString("\n");
-									OutputDebugString((char *)readPacket);
-									CloseHandle(osReader.hEvent);
-									return true;
+					if (buffer[0] != 0x00) {
+						readPacket[index++] = buffer[0];
+					}
 
-								}
-								else {
-									OutputDebugString("\nInvalid Packet");
-									readPacket[index + 1] = 0x00;
-									OutputDebugString((char *)readPacket);
-									CloseHandle(osReader.hEvent);
-									return false;
+					OutputDebugString((char*)readPacket);
+					if (buffer[0] == EOT) {
+						OutputDebugString("\nPACKET COMPLETE");
+						unsigned char * aPacket = depacketize(readPacket);
+						if (aPacket != 0x00) {
+							OutputDebugString("\nPacket received properly");
+							writePacket(ACK);
+							OutputDebugString("\nTHe packet is: ");
+							OutputDebugString("\n");
+							OutputDebugString((char *)readPacket);
+							CloseHandle(osReader.hEvent);
+							writePacket(ACK);
+							return true;
 
-								}
-							}
-								
-								
-								
-						
+						}
+						else {
+							OutputDebugString("\nInvalid Packet");
+							readPacket[index + 1] = 0x00;
+							OutputDebugString((char *)readPacket);
+							CloseHandle(osReader.hEvent);
+							return false;
+
+						}
+					}
+
+
+
+
 					buffer[0] = 0x00;
 				} while (dwCommEvent);
+			}
+			else {
+				if (WaitForSingleObject(osReader.hEvent, READ_TIMEOUT))
+					return false;
+
+			}
+		
+			
+				
 
 
 		}

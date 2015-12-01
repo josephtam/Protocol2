@@ -65,7 +65,8 @@ HWND hwnd;
 
 #pragma warning (disable: 4096)
 
-char	lpszCommName[] = TEXT("com1");
+//char	lpszCommName[] = TEXT("com1");
+char	lpszCommName[] = TEXT("com5");
 HANDLE hComm;
 
 /*

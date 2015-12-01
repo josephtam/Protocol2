@@ -256,13 +256,18 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 	checkForSoh();
 	return 0;
 }
-
+DWORD WINAPI writeThread(LPVOID hwnd) {
+	sendEnq();
+	while (!(timeoutWait(100))) {
+		OutputDebugString("\nACK not recieved back ok");
+		writePacket(ENQ);
+	}
+	return 0;
+}
 void acknowledgeEnq() {
 	writePacket(ACK);
-	while(!(timeoutWait(100))) {
-		writePacket(ACK);
-	}
-	OutputDebugString("\nRecieved ACK BACK OK");
+	
+	OutputDebugString("\nSENDING BACK ACK OK");
 
 }
 boolean idleReadEnq() {
@@ -297,11 +302,7 @@ boolean idleReadEnq() {
 	
 	return true;
 }
-DWORD WINAPI writeThread(LPVOID hwnd) {
-	sendEnq();
 
-	return 0;
-}
 void sendEnq() {
 	SetCommMask(hComm, EV_KILL_THREAD);
 	writePacket(ENQ);

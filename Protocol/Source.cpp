@@ -236,7 +236,12 @@ boolean idleReadEnq() {
 				}
 
 			}
-		} while (buffer[0] != ENQ);
+			if (dwCommEvent == 0) {
+				OutputDebugString("Killing thrad");
+				ExitThread(0);
+			}
+		} 
+		while (buffer[0] != ENQ);
 		OutputDebugString("ENQ RECEIVED OK");
 
 
@@ -247,6 +252,18 @@ boolean idleReadEnq() {
 }
 DWORD WINAPI writeThread(LPVOID hwnd) {
 	return 0;
+}
+void sendEnq() {
+	SetCommMask(hComm, 11111);
+	writePacket(ENQ);
+	OutputDebugString("Sending an ENQ\n");
+	//if (timeoutWait(500)) {
+		//unsigned char data[] = "Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.";
+		//writingState();
+	//}
+	//else {
+		//OutputDebugString("Timeout, no ack receieved");
+	//}
 }
 
 DWORD WINAPI ConnectionRead(LPVOID hwnd)
@@ -1065,15 +1082,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 			char temp[516];
 			sprintf_s(temp, "%c", TEXT(wParam));
 			if ((char)wParam == 'e') {
-				writePacket(ENQ);
-				OutputDebugString("Sending an ENQ\n");
-				if (timeoutWait(500)) {
-					unsigned char data[] = "Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.";
-					writingState();
-				}
-				else {
-					OutputDebugString("Timeout, no ack receieved");
-				}
+				sendEnq();
 			}
 			else if ((char)wParam == 'a') {
 				OutputDebugString("Sending an ACK\n");

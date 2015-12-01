@@ -51,6 +51,8 @@ BOOL readInPacket();
 bool timeoutWait(DWORD ms);
 void acknowledgeEnq();
 char * readBuffer;
+void checkSendPriority();
+void checkReceivePriority();
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 void writingState();
 //Handle for the output window
@@ -274,7 +276,7 @@ boolean checkForSoh(DWORD ms) {
 				OutputDebugString("\nHAD TO SEND BACK ACK OK");
 				writePacket(ACK);
 			}
-			
+
 		} while (buffer[0] != SOH);
 		OutputDebugString("\nSOH RECEIVED OK");
 
@@ -282,8 +284,14 @@ boolean checkForSoh(DWORD ms) {
 
 	}
 
-	
+
 	return true;
+}
+void beIdle() {
+	
+		rThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&readThread, (LPVOID)hwnd,
+			0, &rThreadId);
+	
 }
 
 DWORD WINAPI readThread(LPVOID hwnd) {
@@ -291,7 +299,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 	idleReadEnq();
 	OutputDebugString("\nBACK IN IDLE OK");
 	acknowledgeEnq();
-	
+
 	while (!checkForSoh(READ_TIMEOUT)) {
 		if (attempts++ == 4) {
 			OutputDebugString("Giving up on reading SOH OK");
@@ -299,6 +307,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 		}
 	}
 	readInPacket();
+	checkReceivePriority();
 	return 0;
 }
 DWORD WINAPI writeThread(LPVOID hwnd) {
@@ -308,9 +317,15 @@ DWORD WINAPI writeThread(LPVOID hwnd) {
 		writePacket(ENQ);
 	}
 	OutputDebugString("\nACK BACK IN WRITETHREAD OK");
-	//writePackets();
-	writePacket(SOH);
+	writePackets();
+	checkSendPriority();
 	return 0;
+}
+void checkSendPriority() {
+	beIdle();
+}
+void checkReceivePriority() {
+	beIdle();
 }
 void acknowledgeEnq() {
 	writePacket(ACK);
@@ -319,8 +334,16 @@ void acknowledgeEnq() {
 
 }
 void writePackets() {
+	int attempts = 0;
 	unsigned char data[] = "Hello, this is a test. I hope it works because I really dont like this and want to sleep all day...";
 	writeDataPacket(data);
+	while (!timeoutWait(100)) {
+		writeDataPacket(data);
+		if (attempts++ == 4) {
+			OutputDebugString("Giving up on writing");
+			break;
+		}
+	}
 }
 boolean idleReadEnq() {
 	OutputDebugString("In idleReadEnq");
@@ -401,7 +424,7 @@ BOOL readInPacket()
 				do {
 					if (!ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader)) {
 						if (GetLastError() == ERROR_IO_PENDING) {
-							WaitForSingleObject(osReader.hEvent, INFINITE);
+							WaitForSingleObject(osReader.hEvent, READ_WAIT);
 						}
 					}
 
@@ -1097,9 +1120,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 			SetThreadPriority(hThrd, THREAD_PRIORITY_HIGHEST);
 			ResumeThread(hThrd);
 			*/
-			rThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&readThread, (LPVOID)hwnd,
-				0, &rThreadId);
-
+			beIdle();
 			/*hThrd = CreateThread(NULL, 0, readThread, (LPVOID)hwnd,
 				CREATE_SUSPENDED, &ReadInput);
 			SetThreadPriority(hThrd, THREAD_PRIORITY_HIGHEST);

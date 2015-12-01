@@ -16,7 +16,7 @@ enum states { idle, waitPacket, waitAck, waitAck2, wait, sendState, receiveState
 states status;
 unsigned char depacketizedData[512];
 DWORD WINAPI readThread(LPVOID hwnd);
-
+HANDLE wThread, rThread;
 boolean idleReadEnq();
 using namespace std;
 void checkPriority(states cur);
@@ -24,9 +24,12 @@ static const int COMMAND_MODE = 1;
 static const int READY_TO_CONNECT_MODE = 2;
 static const int CONNECT_MODE = 3;
 void checkStatus(BYTE type);
+boolean checkForSoh();
 BOOL writePacket(BYTE type);
 void acknowledgeLine();
+DWORD wThreadId, rThreadId;
 //char Name[] = "Radio Comm";
+void sendEnq();
 //LPCSTR lpszCommName = "COM1";
 COMMCONFIG	cc;			//Communcation configurations
 						//HANDLE		hComm;		//Handle for Serial Port
@@ -43,6 +46,8 @@ BOOL writeDataPacket(unsigned char* data);
 bool sendPriority = false;
 bool receievePriority = false;
 char str[80] = "";
+bool timeoutWait(DWORD ms);
+void acknowledgeEnq();
 char * readBuffer;
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 void writingState();
@@ -214,12 +219,52 @@ will be accompanied with the associated parameter.
 */
 BYTE* getPacket(BYTE, BYTE[]);
 
+bool timeoutWait(DWORD ms) {
+	SetCommMask(hComm, EV_RXCHAR);
+	DWORD dwCommEvent = 0;
+	unsigned char buffer[2] = { 0 };
+	OVERLAPPED	osReader = { 0 };
+	osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	if (WaitCommEvent(hComm, &dwCommEvent, &osReader)) {
+
+	}
+	else {
+		//look into waitforsingleobject return value
+		if (!ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader)) {
+			if (GetLastError() == ERROR_IO_PENDING) {
+				if (WaitForSingleObject(osReader.hEvent, ms))
+					return false;
+			}
+		}
+	}
+	if (buffer[0] == ACK) {
+		OutputDebugString("\nReceived ack");
+
+		return true;
+	}
+	OutputDebugString("\nDid not recieve ACK, but antoher character or something");
+	return false;
+
+}
+boolean checkForSoh() {
+	return true;
+}
 DWORD WINAPI readThread(LPVOID hwnd) {
 	idleReadEnq();
-	OutputDebugString("BACK IN IDLE OK");
+	OutputDebugString("\nBACK IN IDLE OK");
+	acknowledgeEnq();
+	checkForSoh();
 	return 0;
 }
 
+void acknowledgeEnq() {
+	writePacket(ACK);
+	while(!(timeoutWait(100))) {
+		writePacket(ACK);
+	}
+	OutputDebugString("\nRecieved ACK BACK OK");
+
+}
 boolean idleReadEnq() {
 	OutputDebugString("In idleReadEnq");
 	SetCommMask(hComm, EV_RXCHAR);
@@ -229,6 +274,11 @@ boolean idleReadEnq() {
 	osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
 	if (WaitCommEvent(hComm, &dwCommEvent, NULL)) {
+		OutputDebugString("event received");
+		if (dwCommEvent == 0) {
+			OutputDebugString("Killing thrad");
+			ExitThread(0);
+		}
 		do {
 			if (!ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader)) {
 				if (GetLastError() == ERROR_IO_PENDING) {
@@ -236,10 +286,7 @@ boolean idleReadEnq() {
 				}
 
 			}
-			if (dwCommEvent == 0) {
-				OutputDebugString("Killing thrad");
-				ExitThread(0);
-			}
+			
 		} 
 		while (buffer[0] != ENQ);
 		OutputDebugString("ENQ RECEIVED OK");
@@ -251,10 +298,12 @@ boolean idleReadEnq() {
 	return true;
 }
 DWORD WINAPI writeThread(LPVOID hwnd) {
+	sendEnq();
+
 	return 0;
 }
 void sendEnq() {
-	SetCommMask(hComm, 11111);
+	SetCommMask(hComm, EV_KILL_THREAD);
 	writePacket(ENQ);
 	OutputDebugString("Sending an ENQ\n");
 	//if (timeoutWait(500)) {
@@ -417,7 +466,7 @@ void acknowledgeLine() {
 	
 
 }
-bool timeoutWait(DWORD ms) {
+/*bool timeoutWait(DWORD ms) {
 	SetCommMask(hComm, EV_RXCHAR);
 	DWORD dwCommEvent = 0;
 	unsigned char buffer[2] = { 0 };
@@ -439,7 +488,7 @@ bool timeoutWait(DWORD ms) {
 	OutputDebugString("Received ack");
 	return true;
 
-}
+}*/
 void waitForPacket() {
 
 }
@@ -1017,10 +1066,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 			SetThreadPriority(hThrd, THREAD_PRIORITY_HIGHEST);
 			ResumeThread(hThrd);
 			*/
-			hThrd = CreateThread(NULL, 0, readThread, (LPVOID)hwnd,
+			rThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&readThread, (LPVOID)hwnd,
+				0, &rThreadId);
+
+			/*hThrd = CreateThread(NULL, 0, readThread, (LPVOID)hwnd,
 				CREATE_SUSPENDED, &ReadInput);
 			SetThreadPriority(hThrd, THREAD_PRIORITY_HIGHEST);
-			ResumeThread(hThrd);
+			ResumeThread(hThrd);*/
 			//Allow for CONNECTION_MODE
 			Mode = CONNECT_MODE;
 
@@ -1082,7 +1134,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 			char temp[516];
 			sprintf_s(temp, "%c", TEXT(wParam));
 			if ((char)wParam == 'e') {
-				sendEnq();
+				//sendEnq();
+				wThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&writeThread, (LPVOID)hwnd,
+					0, &wThreadId);
+				
 			}
 			else if ((char)wParam == 'a') {
 				OutputDebugString("Sending an ACK\n");

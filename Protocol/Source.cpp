@@ -241,6 +241,28 @@ will be accompanied with the associated parameter.
 */
 BYTE* getPacket(BYTE, BYTE[]);
 
+/*
+=========================================================================
+FUNCTION:		TimeoutWait(DWORD ms)
+
+DATE:			12/2/15
+
+REVISIONS:		Colin Bose
+	
+DESIGNER:		Colin Bose			
+
+PROGRAMMER:		Colin Bose
+
+
+PARAMETERS:		DWORD ms
+How long to wait for ENQ. Will be 500 if wait state or INFINITE if idle.
+
+RETURNS:		boolean
+True if ENQ received, false if not.
+
+
+=========================================================================
+*/
 bool timeoutWait(DWORD ms) {
 	PurgeComm(hComm, PURGE_RXCLEAR | PURGE_RXABORT);
 
@@ -275,6 +297,30 @@ bool timeoutWait(DWORD ms) {
 	return false;
 
 }
+/*
+=========================================================================
+FUNCTION:		checkForSoh(DWORD ms)
+
+DATE:			12/2/15
+
+REVISIONS:		Colin Bose
+
+DESIGNER:		Colin Bose
+
+PROGRAMMER:		Colin Bose
+
+
+PARAMETERS:		DWORD ms
+How long to wait for SOH before giving up on reading.
+
+RETURNS:		boolean
+SOH found, return true. No SOH, return false.
+
+Wait for SOH. If SOH received, a packet is incoming so read it. If not, give up on reading and return to idle.
+
+
+=========================================================================
+*/
 boolean checkForSoh(DWORD ms) {
 	OutputDebugString("In idleReadEnq");
 	SetCommMask(hComm, EV_RXCHAR);
@@ -314,6 +360,27 @@ boolean checkForSoh(DWORD ms) {
 
 	return true;
 }
+
+/*
+=========================================================================
+FUNCTION:		beIdle(VOID)
+
+DATE:			12/2/15
+
+REVISIONS:		Colin Bose
+
+DESIGNER:		Colin Bose
+
+PROGRAMMER:		Colin Bose
+
+
+PARAMETERS:		NONE
+
+RETURNS:		NONE
+
+Starts the read thread again after read/write threads finish.
+=========================================================================
+*/
 void beIdle() {
 	OutputDebugString("\nIn beIdle, the thread should die NOW");
 		rThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&readThread, (LPVOID)hwnd,
@@ -321,6 +388,28 @@ void beIdle() {
 	
 }
 
+/*
+=========================================================================
+FUNCTION:		DWORD WINAPI readThread(LPVOID hwnd)
+
+DATE:			12/2/15
+
+REVISIONS:		Colin Bose
+
+DESIGNER:		Colin Bose
+
+PROGRAMMER:		Colin Bose
+
+
+PARAMETERS:		LPVOID hwnd
+How long to wait for ENQ. Will be 500 if wait state or INFINITE if idle.
+
+RETURNS:		boolean
+True if ENQ received, false if not.
+
+
+=========================================================================
+*/
 DWORD WINAPI readThread(LPVOID hwnd) {
 	updateStatistic(hList, sent, received, fail);
 	OutputDebugString("\nREAD THREAD STARTING");
@@ -345,7 +434,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 		
 		PurgeComm(hComm, PURGE_RXCLEAR);
 		if (dataToRead) {
-			if (packetsOk.size() <= 0)
+			if (packetsOk.size() <= 1)
 				dataToRead = false;
 			OutputDebugString("\nStarting write thread");
 			wThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&writeThread, (LPVOID)hwnd,

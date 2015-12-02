@@ -337,6 +337,10 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 		if (!sendPriority || sendPriority && readPriority) {
 			gotEnq = idleReadEnq((DWORD)750);
 		}
+		else {
+
+			OutputDebugString("HAD PRIORITY");
+		}
 		inWrite = false;
 	}
 	sendPriority = false;
@@ -1343,10 +1347,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 			OutputDebugString("disconnect btn or menu item clicked\n");
 			break;
 		case IDM_PRIORITY:
-			if (!buttonPriority)
+			/*if (!buttonPriority)
 				buttonPriority = true;
 			else
-				buttonPriority = false;
+				buttonPriority = false;*/
 			// Do stuff when "Priority" is selected from the menu
 			OutputDebugString("Priority button or menu item pressed\n");
 			break;

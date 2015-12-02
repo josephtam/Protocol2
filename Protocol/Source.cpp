@@ -378,7 +378,14 @@ DWORD WINAPI writeThread(LPVOID hwnd) {
 	OutputDebugString("\nWRITE THREAD STARTING");
 	OutputDebugString("\nTop of WRITE, sending ENQ");
 	sendEnq();
+	int attempts = 1;
 	while (!(timeoutWait(1000))) {
+		if (attempts++ == 4) {
+			beIdle();
+			ExitThread(1);
+		}
+		
+
 		if (buttonPriority) {
 			writePacket(DC2);
 		}

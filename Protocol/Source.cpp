@@ -1134,6 +1134,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 			//Allow for CONNECTION_MODE
 			Mode = CONNECT_MODE;
 
+			SetWindowText(hConnectToggleBtn, DISCONNECT);
+			SetWindowLongPtr(hConnectToggleBtn, GWLP_ID, static_cast<LONG_PTR>(static_cast<DWORD_PTR>(IDM_DISCONNECT)));
+			EnableMenuItem(GetMenu(hwnd), IDM_CONNECT, MF_GRAYED);
+			EnableMenuItem(GetMenu(hwnd), IDM_DISCONNECT, MF_ENABLED);
+			OutputDebugString("disconnect btn or menu item clicked\n");
+			break;
+
+
 			break;
 		case IDM_DISCONNECT:
 			// Do stuff when "Disconnect" is selected from the menu/btn click

@@ -362,6 +362,9 @@ void writePackets() {
 	temp = temp.substr(0, temp.size() - 1);
 	packetsOk.pop_front(); 
 	const unsigned char * data = reinterpret_cast<const unsigned char *> (temp.c_str());
+	
+	
+	
 
 	//unsigned char data[] = "Hello, this is a test. I hope it works because I really dont like this and want to sleep all day...";
 	OutputDebugString("\nIn writePackets");
@@ -839,7 +842,7 @@ unsigned char * packetize(const unsigned char * data) {
 	unsigned char * packet;
 	int packetSize = dataSize + 4;
 
-	if (dataSize < 512) {
+	if (dataSize < 513) {
 		packetSize++; //need to add EOT
 	}
 
@@ -852,7 +855,7 @@ unsigned char * packetize(const unsigned char * data) {
 	checksum *chk = new checksum();
 	chk->clear();
 
-	for (int i = 0; i < dataSize; i++) {
+	for (int i = 0; i < dataSize - 1; i++) {
 		chk->add(data[i]);
 	}
 
@@ -862,10 +865,10 @@ unsigned char * packetize(const unsigned char * data) {
 	packet[3] = checksum[1];
 
 	int i;
-	for (i = 0; i < dataSize; i++) {
+	for (i = 0; i < dataSize - 1; i++) {
 		packet[4 + i] = data[i];
 	}
-	if (dataSize < 512) {
+	if (dataSize < 513) {
 		packet[4 + i] = EOT; //add EOT
 	}
 	return packet;

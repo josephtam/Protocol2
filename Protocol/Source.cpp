@@ -239,7 +239,7 @@ will be accompanied with the associated parameter.
 BYTE* getPacket(BYTE, BYTE[]);
 
 bool timeoutWait(DWORD ms) {
-	PurgeComm(hComm, PURGE_RXCLEAR | PURGE_RXABORT);
+	//PurgeComm(hComm, PURGE_RXCLEAR | PURGE_RXABORT);
 
 	SetCommMask(hComm, EV_RXCHAR);
 	DWORD dwCommEvent = 0;
@@ -330,7 +330,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 		OutputDebugString("\nWas writing, now doing timeout");
 		terrible = true;
 		if (!sendPriority || sendPriority && readPriority) {
-			gotEnq = idleReadEnq((DWORD)750);
+			gotEnq = idleReadEnq((DWORD)2050);
 		}
 		inWrite = false;
 	}
@@ -338,7 +338,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 	readPriority = false;
 	if (!gotEnq) {
 		
-		PurgeComm(hComm, PURGE_RXCLEAR);
+		//PurgeComm(hComm, PURGE_RXCLEAR);
 		if (dataToRead) {
 			if (packetsOk.size() == 1)
 				dataToRead = false;
@@ -437,13 +437,17 @@ boolean idleReadEnq(DWORD time) {
 	DWORD dwCommEvent = 0;
 	unsigned char buffer[2] = { 0 };
 	OVERLAPPED	osReader = { 0 };
-	
+	//PurgeComm(hComm, PURGE_RXCLEAR);
 	osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-
-	if (inWrite && !terrible){
-		WaitCommEvent(hComm, &dwCommEvent, NULL);
-		inWrite = false;
+	if (inWrite) {
+		if (WaitForSingleObject(osReader.hEvent, time)) {
+			inIdle = false;
+			inWrite = false;
+			return false;
+		
+		}
 	}
+
 	if (WaitCommEvent(hComm, &dwCommEvent, NULL)) {
 		OutputDebugString("event received");
 		if (dwCommEvent == 0) {
@@ -468,11 +472,17 @@ boolean idleReadEnq(DWORD time) {
 			}
 			
 		} 
-		while (buffer[0] != ENQ);
+		while (buffer[0] != ENQ && buffer[0] != DC2);
+
+		if (buffer[0] == DC2) {
+			readPriority = true;
+		}
+		
 
 
-
-
+	}
+	else {
+		OutputDebugString("Hello world");
 	}
 	inIdle = false;
 	return true;
@@ -543,7 +553,7 @@ BOOL readInPacket()
 					}
 
 					//OutputDebugString((char*)readPacket);
-					if (buffer[0] == EOT) {
+					if (buffer[0] == EOT || index == 516) {
 						
 						unsigned char * aPacket = depacketize(readPacket);
 						if (aPacket != 0x00) {

@@ -18,6 +18,7 @@
 // need these at the top:
 enum states { idle, waitPacket, waitAck, waitAck2, wait, sendState, receiveState , sendingPacket};
 states status;
+
 unsigned char depacketizedData[512];
 DWORD WINAPI readThread(LPVOID hwnd);
 DWORD WINAPI readInFileThread(LPVOID hwnd);
@@ -46,11 +47,12 @@ int			Mode = COMMAND_MODE;	//Global variable to switch between modes.
 char Name[] = TEXT("Radio Modem Protocol Driver");
 int syncBit = 0;
 bool inWrite = false;
-unsigned char * packetize(unsigned char * data);
+vector<string> packetsOk;
+unsigned char * packetize(const unsigned char * data);
 unsigned char * depacketize(unsigned char * packet);
 unsigned char getSyncBit();
 DWORD WINAPI writeThread(LPVOID hwnd);
-BOOL writeDataPacket(unsigned char* data);
+BOOL writeDataPacket(const unsigned char* data);
 bool sendPriority = false;
 void writePackets();
 bool receievePriority = false;
@@ -60,7 +62,7 @@ BOOL readInPacket();
 bool timeoutWait(DWORD ms);
 void acknowledgeEnq();
 char * readBuffer;
-deque<vector<unsigned char>>packets;
+vector<unsigned char>packets;
 void checkSendPriority();
 void checkReceivePriority();
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -308,7 +310,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 	int attempts = 0;
 	PurgeComm(hComm, PURGE_RXCLEAR);
 	if (dataToRead){
-		if (packets.size() == 1)
+		if (packetsOk.size() == 1)
 			dataToRead = false;
 		wThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&writeThread, (LPVOID)hwnd,
 			0, &wThreadId);
@@ -356,11 +358,12 @@ void acknowledgeEnq() {
 }
 void writePackets() {
 	int attempts = 0;
-	vector<unsigned char> pack = packets.front();
-	unsigned char * data = reinterpret_cast<unsigned char*> (&pack[0]);
+	string temp = packetsOk.front();
+	const unsigned char * data = reinterpret_cast<const unsigned char *> (temp.c_str());
 	
 	
-	packets.pop_front();
+	
+
 	//unsigned char data[] = "Hello, this is a test. I hope it works because I really dont like this and want to sleep all day...";
 	OutputDebugString("\nIn writePackets");
 	OutputDebugString((char *)data);
@@ -854,7 +857,7 @@ HWND CreateOutputWindow(HWND hwndParent)
 --	is calculated using the checksum.h supplied by Tom Tang.
 --
 ---------------------------------------------------------------------------------*/
-unsigned char * packetize(unsigned char * data) {
+unsigned char * packetize(const unsigned char * data) {
 	//int dataSize = sizeof(data);
 	
 	unsigned char * x = (unsigned char*)data;
@@ -1034,7 +1037,7 @@ void resizeOutputWindow() {
 
 
 
-BOOL writeDataPacket(unsigned char * data) {
+BOOL writeDataPacket(const unsigned char * data) {
 	OutputDebugString("\nIn writeDataPacket");
 	OutputDebugString((char *)data);
 	unsigned char * packet = packetize(data);
@@ -1103,11 +1106,11 @@ DWORD WINAPI readInFileThread(LPVOID hwnd){
 	OutputDebugString("In readFileThread");
 	HANDLE hf = (HANDLE)hwnd;
 	DWORD dwBytesRead = 0;
-	const int MAX = 512;
+	const int MAX = 511;
 	
 	bool read;
 	while (1){
-		unsigned char readBuffer[MAX-1];
+		char readBuffer[MAX];
 		index = 0;
 		OutputDebugString("\nA new sentence");
 		vector<unsigned char> ok;
@@ -1118,34 +1121,45 @@ DWORD WINAPI readInFileThread(LPVOID hwnd){
 			0);
 	//	OutputDebugString(readBuffer);
 		OutputDebugString("\n");
-		if (dwBytesRead == 511) {
+		if (dwBytesRead == 510) {
+			readBuffer[510] = 0;
+			string s = readBuffer;
+			packetsOk.push_back(s);
 			OutputDebugString("This is 512");
-			while (index < dwBytesRead)
+			/*while (index < dwBytesRead)
 			{
 				
-				ok.push_back(readBuffer[index++]);
+				packets.push_back(readBuffer[index++]);
 			
-			}
-			packets.push_back(ok);
-			
+			}*/
+	
 		}
-		else{
-			while (index < dwBytesRead){
+		else if (dwBytesRead > 0){
+			string s = readBuffer;
+			readBuffer[dwBytesRead] = 0;
+			packetsOk.push_back(s);
+			/*while (index < dwBytesRead){
 				ok.push_back(readBuffer[index++]);
-			}
-			packets.push_back(ok);
-			OutputDebugString("\nLast packet");
+				}*/
 			if (inIdle){
+				dataToRead = true;
+				
 
 				wThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&writeThread, (LPVOID)hwnd,
 					0, &wThreadId);
 			}
+			OutputDebugString("\nLast packet");
 			return 0;
 		}
-		if (read && dwBytesRead == 0){
+		else if (read && dwBytesRead == 0){
 			OutputDebugString("\nI dJosheph knewont know what this check was for");
-			if (packets.size() != 0){
-				//not empty.
+			if (packetsOk.size() != 0){
+				dataToRead = true;
+			}
+			if (inIdle){
+				
+				wThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&writeThread, (LPVOID)hwnd,
+					0, &wThreadId);
 			}
 			return 0;
 		}

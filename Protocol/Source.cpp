@@ -241,6 +241,31 @@ will be accompanied with the associated parameter.
 */
 BYTE* getPacket(BYTE, BYTE[]);
 
+
+/*bool timeoutWait(DWORD ms)
+=========================================================================
+FUNCTION:		
+
+DATE:			Dec 2 2015
+
+REVISIONS:
+
+DESIGNER:		Colin Bose
+
+PROGRAMMER:		Colin Bose
+
+INTERFACE:		
+
+PARAMETERS:		DWORD ms
+The amount of time to wait fo ran ACK. Should be 500 or INFINITE;
+
+RETURNS:		bool
+True if ACK received, false if not.
+
+NOTES:
+Attempts to wait for an ACK
+=========================================================================
+*/
 bool timeoutWait(DWORD ms) {
 	PurgeComm(hComm, PURGE_RXCLEAR | PURGE_RXABORT);
 
@@ -262,21 +287,43 @@ bool timeoutWait(DWORD ms) {
 		}
 	}
 	if (buffer[0] == ACK) {
-		OutputDebugString("\nReceived ack");
 
 		return true;
 	}
 	else if (buffer[0] == DC1) {
-		OutputDebugString("Priority Request");
 		sendPriority = true;
 		return true;
 	}
-	OutputDebugString("\nDid not recieve ACK, but antoher character or something");
 	return false;
 
 }
+
+
+/*
+=========================================================================
+FUNCTION:		boolean checkForSoh(DWORD ms)
+
+DATE:			Dec 2 2015
+
+REVISIONS:
+
+DESIGNER:		Colin Bose
+
+PROGRAMMER:		Colin Bose
+
+INTERFACE:
+
+PARAMETERS:		DWORD ms
+The amount of time to wait fo ran SOH. 
+
+RETURNS:		bool
+Returns true if SOH is found, false if it is not. If SOH is found, start reading a packet.
+
+NOTES:
+Attempts to read in an SOH character.
+=========================================================================
+*/
 boolean checkForSoh(DWORD ms) {
-	OutputDebugString("In idleReadEnq");
 	SetCommMask(hComm, EV_RXCHAR);
 	DWORD dwCommEvent = 0;
 	unsigned char buffer[2] = { 0 };
@@ -284,9 +331,7 @@ boolean checkForSoh(DWORD ms) {
 	osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
 	if (WaitCommEvent(hComm, &dwCommEvent, NULL)) {
-		OutputDebugString("event received");
 		if (dwCommEvent == 0) {
-			OutputDebugString("\nExit Thread in SOH");
 			ExitThread(0);
 		}
 		do {
@@ -298,44 +343,84 @@ boolean checkForSoh(DWORD ms) {
 
 			}
 			if (buffer[0] == ENQ) {
-				OutputDebugString("\nHAD TO SEND BACK ACK OK");
 				writePacket(ACK);
 			}
 			else if(buffer[0] == DC2){
-				OutputDebugString("\nPriority request");
 				readPriority = true;
 				writePacket(ACK);
 			}
 
 		} while (buffer[0] != SOH);
-		OutputDebugString("\nSOH RECEIVED OK");
 
 	}
 
 	return true;
 }
+
+/*
+=========================================================================
+FUNCTION:		void beIdlE()
+
+DATE:			Dec 2 2015
+
+REVISIONS:
+
+DESIGNER:		Colin Bose
+
+PROGRAMMER:		Colin Bose
+
+INTERFACE:
+
+PARAMETERS:		VOID
+RETURNS:		VOID
+
+NOTES:
+Called to reset back to readThread. Called after write or read thread finishes
+=========================================================================
+*/
 void beIdle() {
-	OutputDebugString("\nIn beIdle, the thread should die NOW");
 		rThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&readThread, (LPVOID)hwnd,
 			0, &rThreadId);
 	
 }
 
+/*
+=========================================================================
+FUNCTION:		DWORD WINAPI readThread(LPVOID hwnd) 
+
+
+DATE:			Dec 2 2015
+
+REVISIONS:
+
+DESIGNER:		Colin Bose
+
+PROGRAMMER:		Colin Bose
+
+INTERFACE:
+
+PARAMETERS:		LPVOID hwnd
+
+RETURNS:		DWORD WINAPI
+
+
+NOTES:
+The read thread. Is created from idle. Once in thread, attempts to read in an ENQ. If ENQ detected
+It continues through the whole READ side of the protocol.
+=========================================================================
+*/
 DWORD WINAPI readThread(LPVOID hwnd) {
 	updateStatistic(hList, sent, received, fail);
-	OutputDebugString("\nREAD THREAD STARTING");
 	int attempts = 0;
 	bool gotEnq = false;
 	terrible = false;
 	if (inWrite) {
-		OutputDebugString("\nWas writing, now doing timeout");
 		terrible = true;
 		if (!sendPriority || sendPriority && readPriority) {
 			gotEnq = idleReadEnq((DWORD)500);
 		}
 		else {
 
-			OutputDebugString("HAD PRIORITY");
 		}
 		inWrite = false;
 	}
@@ -347,15 +432,12 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 		if (dataToRead) {
 			if (packetsOk.size() <= 1)
 				dataToRead = false;
-			OutputDebugString("\nStarting write thread");
 			wThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&writeThread, (LPVOID)hwnd,
 				0, &wThreadId);
 			inWrite = true;
-			OutputDebugString("\nKilling read thread in readThread");
 			ExitThread(99);
 			}
 		else {
-			OutputDebugString("Going to wait for ENQ, INFINITE");
 		idleReadEnq(INFINITE);
 		}
 		
@@ -363,25 +445,45 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 	}
 		
 	
-	OutputDebugString("\nAknowledging ACK in read thread");
 	acknowledgeEnq();
 
 	while (!checkForSoh(READ_TIMEOUT)) {
 		if (attempts++ == 4) {
-			OutputDebugString("\nGiving up on reading SOH OK");
 			break;
 		}
 	}
-	OutputDebugString("\nReading in packet");
 	readInPacket();
-	OutputDebugString("\nRead packet DONE -- checking receive priority.");
 	checkReceivePriority();
-	OutputDebugString("\nREAD THREAD ENDING");
 	return 0;
 }
+
+
+/*
+=========================================================================
+FUNCTION:		DWORD WINAPI writeThread(LPVOID hwnd)
+
+
+DATE:			Dec 2 2015
+
+REVISIONS:
+
+DESIGNER:		Colin Bose
+
+PROGRAMMER:		Colin Bose
+
+INTERFACE:
+
+PARAMETERS:		LPVOID hwnd
+
+RETURNS:		DWORD WINAPI
+
+
+NOTES:
+The write function. Called when there is data to send. Attempts to do the entire SEND side of the protocol
+=========================================================================
+*/
 DWORD WINAPI writeThread(LPVOID hwnd) {
-	OutputDebugString("\nWRITE THREAD STARTING");
-	OutputDebugString("\nTop of WRITE, sending ENQ");
+	
 	sendEnq();
 	int attempts = 1;
 	while (!(timeoutWait(500))) {
@@ -398,14 +500,12 @@ DWORD WINAPI writeThread(LPVOID hwnd) {
 			writePacket(ENQ);
 		}
 	}
-	OutputDebugString("\nWriting a packet");
 	writePackets();
-	OutputDebugString("\nCheck send priority in writeThread");
 	checkSendPriority();
-	OutputDebugString("\nWRITE THREAD ENDING");
 	ExitThread(33);
 	return 0;
 }
+
 void checkSendPriority() {
 	
 	beIdle();
@@ -414,17 +514,65 @@ void checkReceivePriority() {
 	
 	beIdle();
 }
+
+/*
+=========================================================================
+FUNCTION:		acknowledgeEnq
+
+
+DATE:			Dec 2 2015
+
+REVISIONS:
+
+DESIGNER:		Colin Bose
+
+PROGRAMMER:		Colin Bose
+
+INTERFACE:
+
+PARAMETERS:		VOID
+
+RETURNS:		VOID
+
+
+NOTES:
+Called to achnowledge an ENQ by writing an ACK
+=========================================================================
+*/
 void acknowledgeEnq() {
 	if (buttonPriority) {
 		writePacket(DC1);
 	}
 	else {
-		OutputDebugString("sending back ack");
 		writePacket(ACK);
 
 	}
 	
 }
+/*
+=========================================================================
+FUNCTION:		writePackets()
+
+
+DATE:			Dec 2 2015
+
+REVISIONS:
+
+DESIGNER:		Colin Bose
+
+PROGRAMMER:		Colin Bose
+
+INTERFACE:
+
+PARAMETERS:		VOID
+
+RETURNS:		VOID
+
+
+NOTES:
+Attempts to write the current packet in the deque. 
+=========================================================================
+*/
 void writePackets() {
 	int attempts = 0;
 	string temp;
@@ -440,11 +588,11 @@ void writePackets() {
 	
 	writeDataPacket(data);
 	while (!timeoutWait(400)) {
-		OutputDebugString("\nTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTimeoutWait in writePackets did not get ACK");
+		
 		writeDataPacket(data);
 		if (attempts++ == 2) {
 			fail++;
-			OutputDebugString("\nGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGiving up on writing");
+		
 			break;
 		}
 	}
@@ -453,6 +601,33 @@ void writePackets() {
 	}
 	sent++;
 }
+
+/*
+=========================================================================
+FUNCTION:		boolean idleReadEnq(DWORD time)
+
+
+DATE:			Dec 2 2015
+
+REVISIONS:
+
+DESIGNER:		Colin Bose
+
+PROGRAMMER:		Colin Bose
+
+INTERFACE:
+
+PARAMETERS:		DWORD time
+The ammount of time to try to read an ENQ. On timeout, returns false;
+
+RETURNS:		boolean
+Returns true if ENQ found, false if not
+
+
+NOTES:
+Called to try to read an ENQ
+=========================================================================
+*/
 boolean idleReadEnq(DWORD time) {
 	
 
@@ -497,11 +672,9 @@ boolean idleReadEnq(DWORD time) {
 	}
 
 	if (WaitCommEvent(hComm, &dwCommEvent, NULL)) {
-		OutputDebugString("event received");
 		if (dwCommEvent == 0) {
 			inWrite = true;
 			inIdle = false;
-			OutputDebugString("\nKilling thread in idleReadEnq");
 			ExitThread(0);
 		}
 		do {
@@ -534,6 +707,30 @@ boolean idleReadEnq(DWORD time) {
 	return true;
 }
 
+/*
+=========================================================================
+FUNCTION:		void sendEnq()
+
+
+DATE:			Dec 2 2015
+
+REVISIONS:
+
+DESIGNER:		Colin Bose
+
+PROGRAMMER:		Colin Bose
+
+INTERFACE:
+
+PARAMETERS:		VOID
+
+RETURNS:		VOID
+
+
+NOTES:
+Called to write an ENQ to serial port
+=========================================================================
+*/
 void sendEnq() {
 	SetCommMask(hComm, EV_KILL_THREAD);
 	if (buttonPriority) {
@@ -542,14 +739,33 @@ void sendEnq() {
 	else {
 		writePacket(ENQ);
 	}
-	//if (timeoutWait(500)) {
-		//unsigned char data[] = "Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.";
-		//writingState();
-	//}
-	//else {
-		//OutputDebugString("Timeout, no ack receieved");
-	//}
+	
 }
+/*
+=========================================================================
+FUNCTION:		bool readInPacket()
+
+
+DATE:			Dec 2 2015
+
+REVISIONS:
+
+DESIGNER:		Colin Bose
+
+PROGRAMMER:		Colin Bose
+
+INTERFACE:
+
+PARAMETERS:		VOID
+
+RETURNS:		boolean
+True if packet is successful, false if packet is corrupt/not received
+
+
+NOTES:
+Called to read in a packet once SOH is found. 
+=========================================================================
+*/
 BOOL readInPacket()
 {
 	int attempts = 0;
@@ -568,7 +784,6 @@ BOOL readInPacket()
 
 	
 	if (!SetCommMask(hComm, EV_RXCHAR)) {
-		OutputDebugString("Set comm mask failed");
 	}
 	while (Mode > COMMAND_MODE) {
 		if (Mode == READY_TO_CONNECT_MODE)
@@ -587,29 +802,20 @@ BOOL readInPacket()
 						}
 					}
 
-					if (buffer[0] != 0x00) {
-						/*OutputDebugString("[[");
-						OutputDebugString((char*)buffer);
-						OutputDebugString("]]\n");
-						//buffer[0] = 0x00;*/
-					}
-
+					
 					if (buffer[0] != 0x00) {
 						readPacket[index++] = buffer[0];
 					}
 
-					//OutputDebugString((char*)readPacket);
+				
 					if (buffer[0] == EOT || index == 516) {
 						if (buffer[0] != EOT) {
-							OutputDebugString("It works ook");
 						}
 						unsigned char * aPacket = depacketize(readPacket);
 						if (aPacket != 0x00) {
-							OutputDebugString("\nPacket received properly");
-							//writePacket(ACK);
+						
 							received++;
-							OutputDebugString("\nTHe packet is: ");
-							OutputDebugString("\n");
+							
 							if (display) {
 								AppendText(hOutput, (TCHAR *)aPacket);
 								writeToOutputFile(hWriteFile, (char*)aPacket);
@@ -628,9 +834,8 @@ BOOL readInPacket()
 						}
 						else {
 							fail++;
-							OutputDebugString("\nInvalid Packet");
+							
 							readPacket[index + 1] = 0x00;
-							OutputDebugString((char *)readPacket);
 							CloseHandle(osReader.hEvent);
 							return false;
 
@@ -661,62 +866,18 @@ BOOL readInPacket()
 	return 0;
 }
 
-/*bool timeoutWait(DWORD ms) {
-	SetCommMask(hComm, EV_RXCHAR);
-	DWORD dwCommEvent = 0;
-	unsigned char buffer[2] = { 0 };
-	OVERLAPPED	osReader = { 0 };
-	osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-	if (WaitCommEvent(hComm, &dwCommEvent, &osReader)) {
-		
-	}
-	else {
-		//look into waitforsingleobject return value
-		if (!ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader)) {
-			if (GetLastError() == ERROR_IO_PENDING) {
-				if(WaitForSingleObject(osReader.hEvent, ms))
-					return false;
-			}
-		}
-	}
 
-	OutputDebugString("Received ack");
-	return true;
-
-}*/
 
 BOOL OpenPort(HWND hwnd)
 {
 
-	OutputDebugString("Start Open Port\n");
 	if (!GetCommState(hComm, &cc.dcb))
 	{
-		OutputDebugString("OpenPort: GetCommState failed\n");
 		Mode = COMMAND_MODE;
 		return FALSE;
 	}
 
-	/*if (!SetCommState(hComm, &cc.dcb))
-	{
-	OutputDebugString("OpenPort: SetCommState failed\n");
-	Mode = COMMAND_MODE;
-	return FALSE;
-	}*/
-
-	//Attempt to create the TimeOut for reading and writing purposes.
-	/*COMMTIMEOUTS TimeOut;
-	TimeOut.ReadIntervalTimeout = 3;
-	TimeOut.ReadTotalTimeoutMultiplier = 3;
-	TimeOut.ReadTotalTimeoutConstant = 2;
-	TimeOut.WriteTotalTimeoutMultiplier = 3;
-	TimeOut.WriteTotalTimeoutConstant = 2;
-
-	if (!SetCommTimeouts(hComm, &TimeOut))
-	{
-	OutputDebugString("OpenPort: SetCommTimeouts failed\n");
-	Mode = COMMAND_MODE;
-	return FALSE;
-	}*/
+	
 
 	return TRUE;
 }
@@ -754,7 +915,6 @@ BOOL ConnectionWrite(HWND hwnd, BYTE message[], size_t size) // need this to poi
 				else {
 					writeSuccess = TRUE;
 					index++;
-					//OutputDebugString("Connection Write: writefile returned false\n");
 				}
 			}
 		}
@@ -763,11 +923,9 @@ BOOL ConnectionWrite(HWND hwnd, BYTE message[], size_t size) // need this to poi
 		{
 			writeSuccess = TRUE;
 			index++;
-			OutputDebugString("Connection Write: writefile returned true\n");
 		}
 	}
 
-	OutputDebugString("Connection Write: Write thread ended\n");
 	CloseHandle(osWrite.hEvent);
 
 	return writeSuccess;
@@ -778,7 +936,6 @@ BYTE* getPacket(BYTE type, BYTE packet[]) {
 	packet[0] = SOH;
 	switch (type) {
 	case SOH:
-		OutputDebugString("Error, SOH detected in getPacket");
 		break;
 	case ENQ:
 	case ACK:
@@ -1203,7 +1360,6 @@ HANDLE selectFile() {
 }
 DWORD WINAPI readInFileThread(LPVOID hwnd){
 	int index = 0;
-	OutputDebugString("In readFileThread");
 	HANDLE hf = (HANDLE)hwnd;
 	DWORD dwBytesRead = 0;
 	const int MAX = 512;
@@ -1216,47 +1372,38 @@ DWORD WINAPI readInFileThread(LPVOID hwnd){
 		}
 		dwBytesRead = 0;
 		index = 0;
-		OutputDebugString("\nA new sentence");
 		vector<unsigned char> ok;
 		read = ReadFile(hf,
 			readBuffer,
 			MAX - 1,
 			&dwBytesRead,
 			0);
-	//	OutputDebugString(readBuffer);
-		OutputDebugString("\n");
 		if (dwBytesRead == 511) {
-			OutputDebugString("512");
 			readBuffer[511] = 0;
 			string s = readBuffer;
-			OutputDebugString(readBuffer);
 			packetsOk.push_back(s);
 
 			
 		}
 		else if (dwBytesRead > 0 && dwBytesRead < 511){
-			OutputDebugString("NOT 512");
 			
 			string s = readBuffer;
 			readBuffer[dwBytesRead] = 0;
 			packetsOk.push_back(s);
 			
 			if (inIdle){
-				OutputDebugString("\n\nWas in idle, pushing stuff now\n\n");
 				dataToRead = true;
 				wThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&writeThread, (LPVOID)hwnd,
 					0, &wThreadId);
 			}else{
 				dataToRead = true;
 			}
-			OutputDebugString("\nLast packet");
 			CloseHandle(hf);
 			return 0;
 		}
 		else if (read && dwBytesRead == 0){
 		
 
-			OutputDebugString("\nI dJosheph knewont know what this check was for");
 			if (packetsOk.size() != 0){
 				dataToRead = true;
 			}
@@ -1291,7 +1438,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 			Mode = COMMAND_MODE;
 			SetFocus(hwnd);
 			// Do stuff when "Connect" is selected from the menu
-			OutputDebugString("Connect button or menu item pressed\n");
 
 			if ((hComm = CreateFile(lpszCommName, GENERIC_READ | GENERIC_WRITE, 0,
 				NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL))
@@ -1326,7 +1472,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 			SetWindowLongPtr(hConnectToggleBtn, GWLP_ID, static_cast<LONG_PTR>(static_cast<DWORD_PTR>(IDM_DISCONNECT)));
 			EnableMenuItem(GetMenu(hwnd), IDM_CONNECT, MF_GRAYED);
 			EnableMenuItem(GetMenu(hwnd), IDM_DISCONNECT, MF_ENABLED);
-			OutputDebugString("disconnect btn or menu item clicked\n");
 			break;
 
 
@@ -1338,7 +1483,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 			SetWindowLongPtr(hConnectToggleBtn, GWLP_ID, static_cast<LONG_PTR>(static_cast<DWORD_PTR>(IDM_CONNECT)));
 			EnableMenuItem(GetMenu(hwnd), IDM_DISCONNECT, MF_GRAYED);
 			EnableMenuItem(GetMenu(hwnd), IDM_CONNECT, MF_ENABLED);
-			OutputDebugString("disconnect btn or menu item clicked\n");
 			break;
 		case IDM_PRIORITY:
 			/*if (!buttonPriority)
@@ -1346,28 +1490,23 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 			else
 				buttonPriority = false;*/
 			// Do stuff when "Priority" is selected from the menu
-			OutputDebugString("Priority button or menu item pressed\n");
 			break;
 		case IDM_DISPLAY_ON:
 			// Allow messages to be printed onto the output window
 			SetWindowText(hDisplayToggleBtn, DISPLAY_OFF);
 			display = true;
 			SetWindowLongPtr(hDisplayToggleBtn, GWLP_ID, static_cast<LONG_PTR>(static_cast<DWORD_PTR>(IDM_DISPLAY_OFF)));
-			OutputDebugString("display on btn or menu item clicked\n");
 			break;
 		case IDM_DISPLAY_OFF:
 			// Disallow messages to be printed onto the output window
 			SetWindowText(hDisplayToggleBtn, DISPLAY_ON);
 			display = false;
 			SetWindowLongPtr(hDisplayToggleBtn, GWLP_ID, static_cast<LONG_PTR>(static_cast<DWORD_PTR>(IDM_DISPLAY_ON)));
-			OutputDebugString("display off btn or menu item clicked\n");
 			break;
 		case IDM_SELECT_FILE:
 			selectFile();
-			OutputDebugString("Select File pressed\n");
 			break;
 		case IDM_EXIT:
-			OutputDebugString("Exit menu item pressed\n");
 			CloseHandle(hComm);
 			CloseHandle(hThrd);
 			PostQuitMessage(0);
@@ -1376,7 +1515,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 		break;
 
 	case WM_DESTROY:	// Terminate program
-		OutputDebugString("Destroyed Mode=" + Mode);
 		CloseHandle(hComm);
 		//CloseHandle(hThrd);
 		PostQuitMessage(0);

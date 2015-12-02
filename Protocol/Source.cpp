@@ -23,7 +23,7 @@ unsigned char depacketizedData[512];
 DWORD WINAPI readThread(LPVOID hwnd);
 DWORD WINAPI readInFileThread(LPVOID hwnd);
 HANDLE wThread, rThread;
-boolean idleReadEnq();
+boolean idleReadEnq(DWORD time);
 using namespace std;
 void checkPriority(states cur);
 static const int COMMAND_MODE = 1;
@@ -308,15 +308,24 @@ void beIdle() {
 
 DWORD WINAPI readThread(LPVOID hwnd) {
 	int attempts = 0;
-	PurgeComm(hComm, PURGE_RXCLEAR);
-	if (dataToRead){
-		if (packetsOk.size() == 1)
-			dataToRead = false;
-		wThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&writeThread, (LPVOID)hwnd,
-			0, &wThreadId);
-
+	bool gotEnq = false;
+	if (inWrite) {
+		gotEnq = idleReadEnq((DWORD)500);
+		inWrite = false;
 	}
-	idleReadEnq();
+	if (!gotEnq) {
+		
+		PurgeComm(hComm, PURGE_RXCLEAR);
+		if (dataToRead) {
+			if (packetsOk.size() == 1)
+				dataToRead = false;
+			wThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&writeThread, (LPVOID)hwnd,
+				0, &wThreadId);
+			inWrite = true;
+
+		}
+	}
+	idleReadEnq(INFINITE);
 	OutputDebugString("\nBACK IN IDLE OK");
 	acknowledgeEnq();
 
@@ -379,7 +388,8 @@ void writePackets() {
 		}
 	}
 }
-boolean idleReadEnq() {
+boolean idleReadEnq(DWORD time) {
+	
 	OutputDebugString("\nIn idleReadEnq");
 	inIdle = true;
 	SetCommMask(hComm, EV_RXCHAR);
@@ -404,7 +414,8 @@ boolean idleReadEnq() {
 			buffer[0] = 0x00;
 			if (!ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader)) {
 				if (GetLastError() == ERROR_IO_PENDING) {
-					WaitForSingleObject(osReader.hEvent, INFINITE);
+					if (WaitForSingleObject(osReader.hEvent, time))
+						return false;
 				}
 
 			}

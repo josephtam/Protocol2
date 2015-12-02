@@ -288,7 +288,7 @@ boolean checkForSoh(DWORD ms) {
 	return true;
 }
 void beIdle() {
-	
+	OutputDebugString("\nBEING IDLE");
 		rThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&readThread, (LPVOID)hwnd,
 			0, &rThreadId);
 	
@@ -320,6 +320,7 @@ DWORD WINAPI writeThread(LPVOID hwnd) {
 	OutputDebugString("\nACK BACK IN WRITETHREAD OK");
 	writePackets();
 	checkSendPriority();
+	OutputDebugString("\nWRITE THREAD IS DEAD");
 	return 0;
 }
 void checkSendPriority() {
@@ -347,7 +348,7 @@ void writePackets() {
 	}
 }
 boolean idleReadEnq() {
-	OutputDebugString("In idleReadEnq");
+	OutputDebugString("\nIn idleReadEnq");
 	SetCommMask(hComm, EV_RXCHAR);
 	DWORD dwCommEvent = 0;
 	unsigned char buffer[2] = { 0 };

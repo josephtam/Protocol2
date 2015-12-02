@@ -476,7 +476,13 @@ boolean idleReadEnq(DWORD time) {
 					return true;
 					//writePacket(ACK);
 				
-			}
+				}
+				else if (buffer[0] == DC2) {
+					inIdle = false;
+					inWrite = false;
+					receievePriority = true;
+					return true;
+				}
 			inIdle = false;
 			inWrite = false;
 			return false;

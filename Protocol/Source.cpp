@@ -310,9 +310,10 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 	int attempts = 0;
 	bool gotEnq = false;
 	if (inWrite) {
+		OutputDebugString("Was writing, now doing timeout");
 		gotEnq = idleReadEnq((DWORD)1000);
 		inWrite = false;
-	
+	}
 	if (!gotEnq) {
 		
 		PurgeComm(hComm, PURGE_RXCLEAR);
@@ -323,12 +324,15 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 				0, &wThreadId);
 			inWrite = true;
 
-		}
-	}}
-	else {
-
+			}
+		else {
 		idleReadEnq(INFINITE);
+		}
+		
+	
 	}
+		
+	
 	OutputDebugString("\nBACK IN IDLE OK");
 	acknowledgeEnq();
 
@@ -343,16 +347,16 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 	return 0;
 }
 DWORD WINAPI writeThread(LPVOID hwnd) {
-	OutputDebugString("At top of writeThread");
+	
 	sendEnq();
 	while (!(timeoutWait(150))) {
-		OutputDebugString("\nACK not recieved back ok");
+
 		writePacket(ENQ);
 	}
-	OutputDebugString("\nACK BACK IN WRITETHREAD OK");
+
 	writePackets();
 	checkSendPriority();
-	OutputDebugString("\nWRITE THREAD IS DEAD");
+	
 	return 0;
 }
 void checkSendPriority() {
@@ -414,8 +418,12 @@ boolean idleReadEnq(DWORD time) {
 			buffer[0] = 0x00;
 			if (!ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader)) {
 				if (GetLastError() == ERROR_IO_PENDING) {
-					if (WaitForSingleObject(osReader.hEvent, time))
+					if (WaitForSingleObject(osReader.hEvent, time)) {
+						OutputDebugString("\nWas in timeout after sending, I think?");
 						return false;
+						
+					}
+					
 				}
 
 			}
@@ -1021,8 +1029,6 @@ void resizeOutputWindow() {
 
 
 BOOL writeDataPacket(const unsigned char * data) {
-	OutputDebugString("\nIn writeDataPacket");
-	OutputDebugString((char *)data);
 	unsigned char * packet = packetize(data);
 	size_t size = strlen((char *)data) < 512 ? strlen((char *)data) + 5 : strlen((char *)data) + 4;
 	if (packet[0] == NULL) {

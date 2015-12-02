@@ -8,5 +8,5 @@
 #define SYNC0	'\x0F'
 #define SYNC1	'\xF0'
 #define EV_KILL_THREAD  999
-#define READ_TIMEOUT 500
-#define READ_WAIT 1500
+#define READ_TIMEOUT 200
+#define READ_WAIT 200

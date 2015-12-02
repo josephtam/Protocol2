@@ -237,7 +237,8 @@ will be accompanied with the associated parameter.
 BYTE* getPacket(BYTE, BYTE[]);
 
 bool timeoutWait(DWORD ms) {
-	PurgeComm(hComm, PURGE_RXCLEAR);
+	PurgeComm(hComm, PURGE_RXCLEAR | PURGE_RXABORT);
+
 	SetCommMask(hComm, EV_RXCHAR);
 	DWORD dwCommEvent = 0;
 	unsigned char buffer[2] = { 0 };
@@ -316,7 +317,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 	if (inWrite) {
 		OutputDebugString("\nWas writing, now doing timeout");
 		terrible = true;
-		gotEnq = idleReadEnq((DWORD)1000);
+		gotEnq = idleReadEnq((DWORD)500);
 		inWrite = false;
 	}
 	if (!gotEnq) {
@@ -330,7 +331,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 				0, &wThreadId);
 			inWrite = true;
 			OutputDebugString("\nKilling read thread in readThread");
-			ExitThread;
+			ExitThread(99);
 			}
 		else {
 			OutputDebugString("Going to wait for ENQ, INFINITE");
@@ -361,7 +362,7 @@ DWORD WINAPI writeThread(LPVOID hwnd) {
 	OutputDebugString("\nWRITE THREAD STARTING");
 	OutputDebugString("\nTop of WRITE, sending ENQ");
 	sendEnq();
-	while (!(timeoutWait(1500))) {
+	while (!(timeoutWait(150))) {
 
 		writePacket(ENQ);
 	}
@@ -370,6 +371,7 @@ DWORD WINAPI writeThread(LPVOID hwnd) {
 	OutputDebugString("\nCheck send priority in writeThread");
 	checkSendPriority();
 	OutputDebugString("\nWRITE THREAD ENDING");
+	ExitThread(33);
 	return 0;
 }
 void checkSendPriority() {
@@ -397,7 +399,7 @@ void writePackets() {
 	while (!timeoutWait(1000)) {
 		OutputDebugString("\nTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTimeoutWait in writePackets did not get ACK");
 		writeDataPacket(data);
-		if (attempts++ == 4) {
+		if (attempts++ == 2) {
 			OutputDebugString("\nGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGiving up on writing");
 			break;
 		}
@@ -1110,6 +1112,7 @@ DWORD WINAPI readInFileThread(LPVOID hwnd){
 	bool read;
 	while (1){
 		char readBuffer[MAX];
+		dwBytesRead = 0;
 		index = 0;
 		OutputDebugString("\nA new sentence");
 		vector<unsigned char> ok;
@@ -1124,22 +1127,14 @@ DWORD WINAPI readInFileThread(LPVOID hwnd){
 			readBuffer[511] = 0;
 			string s = readBuffer;
 			packetsOk.push_back(s);
-			OutputDebugString("This is 512");
-			/*while (index < dwBytesRead)
-			{
-				
-				packets.push_back(readBuffer[index++]);
+
 			
-			}*/
-	
 		}
 		else if (dwBytesRead > 0){
 			string s = readBuffer;
 			readBuffer[dwBytesRead] = 0;
 			packetsOk.push_back(s);
-			/*while (index < dwBytesRead){
-				ok.push_back(readBuffer[index++]);
-				}*/
+			
 			if (inIdle){
 				OutputDebugString("\n\nWas in idle, pushing stuff now\n\n");
 				dataToRead = true;
@@ -1168,26 +1163,7 @@ DWORD WINAPI readInFileThread(LPVOID hwnd){
 	}
 	CloseHandle(hf);
 }
-/*void writingState() {
-	
-	int attempts = 0;
-	
-	unsigned char* data = packets.front();
-	packets.pop_front();
-	OutputDebugString("\nThe packet is: ");
-	OutputDebugString((char *)data);
-	//unsigned char data[] = "Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.&&&&&";
-	while (attempts++ < 5) {
-		writeDataPacket(data);
-		if (timeoutWait(100)) {
-			OutputDebugString("Ack returned back to sender");
-			break;
-		}
-		else {
-			OutputDebugString("Ack not received");
-		}
-	}
-}*/
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 	WPARAM wParam, LPARAM lParam)
 {

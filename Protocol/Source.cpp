@@ -35,7 +35,7 @@ BOOL writePacket(BYTE type); vector<unsigned char> dataBuffer;
 void acknowledgeLine();
 boolean inIdle = false;
 bool readPriority = false;
-bool display = true;
+bool display = false;
 DWORD wThreadId, rThreadId;
 HANDLE hWriteFile;
 //char Name[] = "Radio Comm";
@@ -603,6 +603,13 @@ BOOL readInPacket()
 						if (buffer[0] != EOT) {
 							OutputDebugString("It works ook");
 						}
+						else if(index == 516){
+							OutputDebugString("hit end of packet");
+
+						}
+						if (buffer[0] == EOT) {
+							OutputDebugString("ITS EOT WHYYYYYY");
+						}
 						unsigned char * aPacket = depacketize(readPacket);
 						if (aPacket != 0x00) {
 							OutputDebugString("\nPacket received properly");
@@ -951,6 +958,8 @@ HWND CreateOutputWindow(HWND hwndParent)
 --				- a char array in "packet" form if data is valid
 --
 --	NOTES:
+
+
 --	This function puts a char array with size up to 512 bytes into a "packet", which
 --	is a char array comprising of the header (SoH, sync bit, and the checksum (2 bytes))
 --	and the payload which is data that was passed in as the parameter. If data has less
@@ -997,7 +1006,7 @@ unsigned char * packetize(const unsigned char * data) {
 	for (i = 0; i < dataSize; i++) {
 		packet[4 + i] = data[i];
 	}
-	if (dataSize < 511) {
+	if (dataSize < 510) {
 		packet[4 + i] = EOT; //add EOT
 	}
 	return packet;
@@ -1358,6 +1367,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 		case IDM_DISPLAY_OFF:
 			// Disallow messages to be printed onto the output window
 			SetWindowText(hDisplayToggleBtn, DISPLAY_ON);
+			OutputDebugString("DISPLAY TURNED OFF");
 			display = false;
 			SetWindowLongPtr(hDisplayToggleBtn, GWLP_ID, static_cast<LONG_PTR>(static_cast<DWORD_PTR>(IDM_DISPLAY_ON)));
 			OutputDebugString("display off btn or menu item clicked\n");

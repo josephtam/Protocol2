@@ -698,11 +698,17 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hprevInstance,
 	// Creating the output window
 	hOutput = CreateOutputWindow(hwnd);
 
+	hList = CreateListView(hwnd);
+
+	updateStatistic(hList, PKT_SENT, 56);
+	updateStatistic(hList, PKT_RCV, 156);
+	updateStatistic(hList, PKT_DROP, 256);
+
 	hConnectToggleBtn = CreateWindow(
 		"BUTTON",
 		"Connect",
 		WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-		10, 10, 90, 20,
+		10, 90, 90, 20,
 		hwnd,
 		(HMENU)IDM_CONNECT,
 		(HINSTANCE)GetWindowLong(hwnd, GWL_HINSTANCE),
@@ -712,7 +718,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hprevInstance,
 		"BUTTON",
 		"Priority",
 		WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-		110, 10, 90, 20,
+		110, 90, 90, 20,
 		hwnd,
 		(HMENU)IDM_PRIORITY,
 		(HINSTANCE)GetWindowLong(hwnd, GWL_HINSTANCE),
@@ -722,7 +728,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hprevInstance,
 		"BUTTON",
 		"Display On",
 		WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-		10, 40, 90, 20,
+		10, 120, 90, 20,
 		hwnd,
 		(HMENU)IDM_DISPLAY_ON,
 		(HINSTANCE)GetWindowLong(hwnd, GWL_HINSTANCE),
@@ -732,7 +738,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hprevInstance,
 		"BUTTON",
 		"Select File",
 		WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-		110, 40, 90, 20,
+		110, 120, 90, 20,
 		hwnd,
 		(HMENU)IDM_SELECT_FILE,
 		(HINSTANCE)GetWindowLong(hwnd, GWL_HINSTANCE),
@@ -987,7 +993,7 @@ void resizeOutputWindow() {
 		listViewWidth,
 		rcClient.bottom - rcClient.top,
 		TRUE
-		);
+	);
 }
 
 

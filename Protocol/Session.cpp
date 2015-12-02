@@ -1,6 +1,9 @@
 #define STRICT
 #include <windows.h>
 #include "resource.h"
+#include <commctrl.h>
+#include "source.h"
+#include <stdio.h>
 
 /*------------------------------------------------------------------------------------------------------------------
 -- SOURCE FILE: Session.cpp - ********************
@@ -47,4 +50,57 @@ void AppendText(const HWND &hwnd, TCHAR *message)
 
 	// restore the previous selection
 	SendMessage(hwnd, EM_SETSEL, StartPos, EndPos);
+}
+
+HWND CreateListView(HWND hwndParent)
+{
+	RECT rcClient;
+	GetClientRect(hwndParent, &rcClient);
+	size_t listViewWidth = SIZE_BTN_ROW - 20;
+
+	HWND hListView = CreateWindowEx(
+		0,
+		WC_LISTVIEW,
+		NULL,
+		WS_VISIBLE | WS_CHILD | WS_BORDER | LVS_SHOWSELALWAYS | LVS_REPORT,
+		10, 10,
+		listViewWidth,
+		LISTVIEW_HEIGHT,
+		hwndParent, NULL, NULL, NULL);
+
+	LVCOLUMN lvc;
+	lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
+	lvc.iSubItem = COL_1;
+	lvc.pszText = "#";
+	lvc.cx = listViewWidth / 3;
+	lvc.fmt = LVCFMT_LEFT;
+	ListView_InsertColumn(hListView, 0, &lvc);
+
+	lvc.iSubItem = 0;
+	lvc.pszText = "STATISTICS";
+	lvc.cx = listViewWidth * 2 / 3;
+	ListView_InsertColumn(hListView, 0, &lvc);
+
+	LVITEM lvI;
+	lvI.mask = LVIF_TEXT;
+	lvI.iSubItem = COL_0;
+	lvI.pszText = "Packets Sent";
+	lvI.iItem = 0;
+	ListView_InsertItem(hListView, &lvI);
+
+	lvI.pszText = "Packets Received";
+	lvI.iItem = 1;
+	ListView_InsertItem(hListView, &lvI);
+
+	lvI.pszText = "Packets Dropped";
+	lvI.iItem = 2;
+	ListView_InsertItem(hListView, &lvI);
+
+	return hListView;
+}
+
+void updateStatistic(HWND hList, int rowNum, int n) {
+	char value[10];
+	sprintf_s(value, "%d", n);
+	ListView_SetItemText(hList, rowNum, COL_1, value);
 }

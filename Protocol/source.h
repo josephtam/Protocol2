@@ -1,8 +1,12 @@
 #pragma once
 
 static const size_t SIZE_BTN_ROW = 210;
-static const int COL_0 = 0; // will be used for stats list view
-static const int COL_1 = 1; // will be used for stats list view 
+static const int COL_0 = 0;
+static const int COL_1 = 1;
+static const int LISTVIEW_HEIGHT = 70;
+static const int PKT_SENT = 0;
+static const int PKT_RCV = 1;
+static const int PKT_DROP = 2;
 static const char* CONNECT = "Connect";
 static const char* DISCONNECT = "Disconnect";
 static const char* DISPLAY_ON = "Display On";
@@ -19,3 +23,5 @@ static const char* DISPLAY_OFF = "Display Off";
 HWND CreateOutputWindow(HWND hwndParent);
 void AppendText(const HWND &hwnd, TCHAR *newText);
 void resizeOutputWindow();
+HWND CreateListView(HWND hwndParent);
+void updateStatistic(HWND hList, int rowNum, int n);

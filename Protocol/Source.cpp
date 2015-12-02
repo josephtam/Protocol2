@@ -38,6 +38,7 @@ BOOL writePacket(BYTE type); vector<unsigned char> dataBuffer;
 void acknowledgeLine();
 boolean inIdle = false;
 bool readPriority = false;
+bool display = true;
 DWORD wThreadId, rThreadId;
 //char Name[] = "Radio Comm";
 void sendEnq();
@@ -60,7 +61,6 @@ bool sendPriority = false;
 void writePackets();
 bool receievePriority = false;
 char str[80] = "";
-
 BOOL readInPacket();
 bool timeoutWait(DWORD ms);
 void acknowledgeEnq();
@@ -70,6 +70,11 @@ void checkSendPriority();
 void checkReceivePriority();
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 void writingState();
+int received = 0;
+int corrupt = 0;
+int sent = 0;
+int fail = 0;
+
 //Handle for the output window
 HWND hOutput;
 //Handle for the list view
@@ -434,11 +439,13 @@ void writePackets() {
 		OutputDebugString("\nTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTimeoutWait in writePackets did not get ACK");
 		writeDataPacket(data);
 		if (attempts++ == 2) {
+			fail++;
 			OutputDebugString("\nGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGiving up on writing");
 			break;
 		}
 	}
 	packetsOk.pop_front();
+	sent++;
 }
 boolean idleReadEnq(DWORD time) {
 	
@@ -581,16 +588,18 @@ BOOL readInPacket()
 
 					//OutputDebugString((char*)readPacket);
 					if (buffer[0] == EOT || index == 516) {
-					
+						
 						unsigned char * aPacket = depacketize(readPacket);
 						if (aPacket != 0x00) {
 							OutputDebugString("\nPacket received properly");
 							//writePacket(ACK);
-
+							received++;
 							OutputDebugString("\nTHe packet is: ");
 							OutputDebugString("\n");
+							if (display) {
+								AppendText(hOutput, (TCHAR *)aPacket);
+							}
 							
-							AppendText(hOutput, (TCHAR *)aPacket);
 							CloseHandle(osReader.hEvent);
 							if (buttonPriority) {
 								writePacket(DC1);
@@ -603,6 +612,7 @@ BOOL readInPacket()
 
 						}
 						else {
+							corrupt++;
 							OutputDebugString("\nInvalid Packet");
 							readPacket[index + 1] = 0x00;
 							OutputDebugString((char *)readPacket);
@@ -1327,6 +1337,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 			OutputDebugString("disconnect btn or menu item clicked\n");
 			break;
 		case IDM_PRIORITY:
+			if (!buttonPriority)
+				buttonPriority = true;
+			else
+				buttonPriority = false;
 			// Do stuff when "Priority" is selected from the menu
 			OutputDebugString("Priority button or menu item pressed\n");
 			break;

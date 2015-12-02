@@ -600,7 +600,9 @@ BOOL readInPacket()
 
 					//OutputDebugString((char*)readPacket);
 					if (buffer[0] == EOT || index == 516) {
-						
+						if (buffer[0] != EOT) {
+							OutputDebugString("It works ook");
+						}
 						unsigned char * aPacket = depacketize(readPacket);
 						if (aPacket != 0x00) {
 							OutputDebugString("\nPacket received properly");
@@ -995,7 +997,7 @@ unsigned char * packetize(const unsigned char * data) {
 	for (i = 0; i < dataSize; i++) {
 		packet[4 + i] = data[i];
 	}
-	if (dataSize < 512) {
+	if (dataSize < 511) {
 		packet[4 + i] = EOT; //add EOT
 	}
 	return packet;
@@ -1360,12 +1362,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 		case IDM_DISPLAY_ON:
 			// Allow messages to be printed onto the output window
 			SetWindowText(hDisplayToggleBtn, DISPLAY_OFF);
+			display = true;
 			SetWindowLongPtr(hDisplayToggleBtn, GWLP_ID, static_cast<LONG_PTR>(static_cast<DWORD_PTR>(IDM_DISPLAY_OFF)));
 			OutputDebugString("display on btn or menu item clicked\n");
 			break;
 		case IDM_DISPLAY_OFF:
 			// Disallow messages to be printed onto the output window
 			SetWindowText(hDisplayToggleBtn, DISPLAY_ON);
+			display = false;
 			SetWindowLongPtr(hDisplayToggleBtn, GWLP_ID, static_cast<LONG_PTR>(static_cast<DWORD_PTR>(IDM_DISPLAY_ON)));
 			OutputDebugString("display off btn or menu item clicked\n");
 			break;

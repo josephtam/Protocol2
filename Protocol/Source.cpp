@@ -36,6 +36,7 @@ boolean checkForSoh();
 BOOL writePacket(BYTE type); vector<unsigned char> dataBuffer;
 void acknowledgeLine();
 boolean inIdle = false;
+bool readPriority = false;
 DWORD wThreadId, rThreadId;
 //char Name[] = "Radio Comm";
 void sendEnq();
@@ -261,6 +262,11 @@ bool timeoutWait(DWORD ms) {
 
 		return true;
 	}
+	else if (buffer[0] == DC1) {
+		OutputDebugString("Priority Request");
+		sendPriority = true;
+		return true;
+	}
 	OutputDebugString("\nDid not recieve ACK, but antoher character or something");
 	return false;
 
@@ -291,6 +297,11 @@ boolean checkForSoh(DWORD ms) {
 				OutputDebugString("\nHAD TO SEND BACK ACK OK");
 				writePacket(ACK);
 			}
+			else if(buffer[0] == DC2){
+				OutputDebugString("\nPriority request");
+				readPriority = true;
+				writePacket(ACK);
+			}
 
 		} while (buffer[0] != SOH);
 		OutputDebugString("\nSOH RECEIVED OK");
@@ -317,9 +328,13 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 	if (inWrite) {
 		OutputDebugString("\nWas writing, now doing timeout");
 		terrible = true;
-		gotEnq = idleReadEnq((DWORD)5000);
+		if (!sendPriority || sendPriority && readPriority) {
+			gotEnq = idleReadEnq((DWORD)500);
+		}
 		inWrite = false;
 	}
+	sendPriority = false;
+	readPriority = false;
 	if (!gotEnq) {
 		
 		PurgeComm(hComm, PURGE_RXCLEAR);
@@ -396,7 +411,7 @@ void writePackets() {
 	//unsigned char data[] = "Hello, this is a test. I hope it works because I really dont like this and want to sleep all day...";
 	
 	writeDataPacket(data);
-	while (!timeoutWait(200)) {
+	while (!timeoutWait(400)) {
 		OutputDebugString("\nTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTimeoutWait in writePackets did not get ACK");
 		writeDataPacket(data);
 		if (attempts++ == 2) {
@@ -1138,7 +1153,7 @@ DWORD WINAPI readInFileThread(LPVOID hwnd){
 
 			
 		}
-		else if (dwBytesRead > 0){
+		else if (dwBytesRead > 0 && dwBytesRead < 511){
 			OutputDebugString("NOT 512");
 			
 			string s = readBuffer;

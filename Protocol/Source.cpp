@@ -71,7 +71,7 @@ void checkReceivePriority();
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 void writingState();
 int received = 0;
-int corrupt = 0;
+
 int sent = 0;
 int fail = 0;
 
@@ -622,7 +622,7 @@ BOOL readInPacket()
 
 						}
 						else {
-							corrupt++;
+							fail++;
 							OutputDebugString("\nInvalid Packet");
 							readPacket[index + 1] = 0x00;
 							OutputDebugString((char *)readPacket);

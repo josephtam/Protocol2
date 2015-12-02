@@ -296,6 +296,7 @@ void beIdle() {
 
 DWORD WINAPI readThread(LPVOID hwnd) {
 	int attempts = 0;
+	PurgeComm(hComm, PURGE_RXCLEAR);
 	idleReadEnq();
 	OutputDebugString("\nBACK IN IDLE OK");
 	acknowledgeEnq();
@@ -312,7 +313,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 }
 DWORD WINAPI writeThread(LPVOID hwnd) {
 	sendEnq();
-	while (!(timeoutWait(100))) {
+	while (!(timeoutWait(1000))) {
 		OutputDebugString("\nACK not recieved back ok");
 		writePacket(ENQ);
 	}
@@ -429,17 +430,17 @@ BOOL readInPacket()
 					}
 
 					if (buffer[0] != 0x00) {
-						OutputDebugString("[[");
+						/*OutputDebugString("[[");
 						OutputDebugString((char*)buffer);
 						OutputDebugString("]]\n");
-						//buffer[0] = 0x00;
+						//buffer[0] = 0x00;*/
 					}
 
 					if (buffer[0] != 0x00) {
 						readPacket[index++] = buffer[0];
 					}
 
-					OutputDebugString((char*)readPacket);
+					//OutputDebugString((char*)readPacket);
 					if (buffer[0] == EOT) {
 						OutputDebugString("\nPACKET COMPLETE");
 						unsigned char * aPacket = depacketize(readPacket);

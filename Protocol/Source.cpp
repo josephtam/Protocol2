@@ -311,7 +311,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 	bool gotEnq = false;
 	if (inWrite) {
 		OutputDebugString("Was writing, now doing timeout");
-		gotEnq = idleReadEnq((DWORD)1000);
+		gotEnq = idleReadEnq((DWORD)5000);
 		inWrite = false;
 	}
 	if (!gotEnq) {
@@ -382,7 +382,7 @@ void writePackets() {
 	//unsigned char data[] = "Hello, this is a test. I hope it works because I really dont like this and want to sleep all day...";
 	
 	writeDataPacket(data);
-	while (!timeoutWait(100)) {
+	while (!timeoutWait(1000)) {
 		OutputDebugString("\nTimeoutWait in writePackets did not get ACK");
 		writeDataPacket(data);
 		if (attempts++ == 4) {
@@ -1132,6 +1132,7 @@ DWORD WINAPI readInFileThread(LPVOID hwnd){
 				ok.push_back(readBuffer[index++]);
 				}*/
 			if (inIdle){
+				OutputDebugString("\n\nWas in idle, pushing stuff now\n\n");
 				dataToRead = true;
 				wThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&writeThread, (LPVOID)hwnd,
 					0, &wThreadId);

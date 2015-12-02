@@ -894,7 +894,7 @@ unsigned char * depacketize(unsigned char * packet) {
 	unsigned char * x = (unsigned char*)packet;
 	int packetSize = strlen((char*)x);
 
-	if ((packetSize <= 0) || (packetSize > 516)) {
+	if (packetSize <= 0) {
 		return 0x00;
 	}
 
@@ -915,7 +915,7 @@ unsigned char * depacketize(unsigned char * packet) {
 
 	// loop through all the char in packet and add them to checksum at the same time
 	int i = 0;
-	while (packet[i + 4] != 0x04) {
+	while (packet[i + 4] != 0x04 && i < 512) {
 		depacketizedData[i] = packet[i + 4];
 		chk->add(depacketizedData[i]);
 		i++;
@@ -995,7 +995,7 @@ void resizeOutputWindow() {
 BOOL writeDataPacket(unsigned char * data) {
 	unsigned char * packet = packetize(data);
 	size_t size = strlen((char *)data) < 512 ? strlen((char *)data) + 5 : strlen((char *)data) + 4;
-	if (packet[0] == NULL) {
+	if (packet == NULL) {
 		return FALSE;
 	}
 	return ConnectionWrite(hwnd, (BYTE*)packet, size);

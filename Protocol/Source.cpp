@@ -403,8 +403,8 @@ boolean idleReadEnq(DWORD time) {
 	osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
 	if (inWrite){
-		//WaitCommEvent(hComm, &dwCommEvent, NULL);
-		//inWrite = false;
+		WaitCommEvent(hComm, &dwCommEvent, NULL);
+		inWrite = false;
 	}
 	if (WaitCommEvent(hComm, &dwCommEvent, NULL)) {
 		OutputDebugString("event received");

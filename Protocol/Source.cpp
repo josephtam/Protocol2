@@ -420,7 +420,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 		OutputDebugString("\nWas writing, now doing timeout");
 		terrible = true;
 		if (!sendPriority || sendPriority && readPriority) {
-			gotEnq = idleReadEnq((DWORD)500);
+			gotEnq = idleReadEnq((DWORD)750);
 		}
 		else {
 
@@ -517,7 +517,8 @@ void acknowledgeEnq() {
 void writePackets() {
 	int attempts = 0;
 	string temp;
-	if (packetsOk.size() >= 1)
+	
+	if (packetsOk.size() > 1)
 	{
 		 temp = packetsOk.front();
 	}
@@ -537,7 +538,7 @@ void writePackets() {
 			break;
 		}
 	}
-	if (packetsOk.size() > 0) {
+	if (packetsOk.size() > 1) {
 		packetsOk.pop_front();
 	}
 	sent++;

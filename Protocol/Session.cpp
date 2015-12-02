@@ -11,6 +11,10 @@
 --
 -- FUNCTIONS:
 --     void AppendText(const HWND &hwnd, TCHAR *message)
+--	   HWND CreateListView(const HWND &hwndParent)
+--     void updateStatistic(HWND hList, int sent, int rcv, int drop)
+--     HANDLE CreateFileForWriting()
+--     void writeToOutputFile(HANDLE writeFile, char* message)
 --
 -- DATE:	   23/11/2015
 -- REVISIONS:  (Date and Description)
@@ -18,7 +22,9 @@
 -- PROGRAMMER: **************
 --
 -- NOTES:
--- A TCHAR* is passed to AppendText() to be appended to the output window
+-- Responsible for creating the list view that diplays the wifi data transfer protocol. Also reponsible for 
+-- displaying real time statistics onto the list view.
+-- Functions for diplaying text onto the output window and output file also defined here
 ----------------------------------------------------------------------------------------------------------------------*/
 
 /*------------------------------------------------------------------------------------------------------------------
@@ -52,6 +58,19 @@ void AppendText(const HWND &hwnd, TCHAR *message)
 	SendMessage(hwnd, EM_SETSEL, StartPos, EndPos);
 }
 
+/*------------------------------------------------------------------------------------------------------------------
+-- FUNCTION:	CreateListView
+-- DATE:	    30/11/15
+-- REVISIONS:   (V1.0)
+-- DESIGNER:	Joseph Tam-Huang
+-- PROGRAMMER:  Joseph Tam-Huang
+-- INTERFACE:   HWND CreateListView(const HWND &hwndParent)
+--			        const HWND &hwndParent: the handle of the parent window
+-- RETURN:		HWND : the handle to list view
+--
+-- NOTES:
+-- Stores the statistics for the wifi packet transfer
+----------------------------------------------------------------------------------------------------------------------*/
 HWND CreateListView(const HWND &hwndParent)
 {
 	RECT rcClient;
@@ -99,6 +118,23 @@ HWND CreateListView(const HWND &hwndParent)
 	return hListView;
 }
 
+/*------------------------------------------------------------------------------------------------------------------
+-- FUNCTION:	updateStatistic
+-- DATE:	    02/12/15
+-- REVISIONS:   (V1.0)
+-- DESIGNER:	Joseph Tam-Huang
+-- PROGRAMMER:  Joseph Tam-Huang
+-- INTERFACE:   void updateStatistic(HWND hList, int sent, int rcv, int drop)
+--					HWND hList: The handle to the list view that displays the statistics
+--					int sent: the number of packets sent
+--					int rcv: the number of packets received
+--					int drop: the number of packets dropped
+-- RETURN:		void
+--
+-- NOTES:
+-- Creates the file for storing the text ouput.
+----------------------------------------------------------------------------------------------------------------------*/
+
 void updateStatistic(HWND hList, int sent, int rcv, int drop) {
 	char s[10];
 	char r[10];
@@ -110,6 +146,19 @@ void updateStatistic(HWND hList, int sent, int rcv, int drop) {
 	ListView_SetItemText(hList, 1, COL_1, r);
 	ListView_SetItemText(hList, 2, COL_1, d);
 }
+
+/*------------------------------------------------------------------------------------------------------------------
+-- FUNCTION:	CreateFileForWriting
+-- DATE:	    02/12/15
+-- REVISIONS:   (V1.0)
+-- DESIGNER:	Joseph Tam-Huang
+-- PROGRAMMER:  Joseph Tam-Huang
+-- INTERFACE:   HANDLE CreateFileForWriting()
+-- RETURN:		HANDLE : the handle of the file created for writting
+--
+-- NOTES:
+-- Creates the file for storing the text ouput.
+----------------------------------------------------------------------------------------------------------------------*/
 
 HANDLE CreateFileForWriting() {
 	HANDLE hFile;
@@ -127,6 +176,21 @@ HANDLE CreateFileForWriting() {
 	}
 	return hFile;
 }
+
+/*------------------------------------------------------------------------------------------------------------------
+-- FUNCTION:	writeToOutputFile
+-- DATE:	    02/12/15
+-- REVISIONS:   (V1.0)
+-- DESIGNER:	Joseph Tam-Huang
+-- PROGRAMMER:  Joseph Tam-Huang
+-- INTERFACE:   void writeToOutputFile(HANDLE writeFile, char* message)
+--			        const HAnDLE writeFile: the handle of the output file
+--					char *message: the message to write to the file
+-- RETURN:		void
+--
+-- NOTES:
+-- Writes the payload of the received packet into a file.
+----------------------------------------------------------------------------------------------------------------------*/
 
 void writeToOutputFile(HANDLE writeFile, char* message) {
 	DWORD dwWritten;

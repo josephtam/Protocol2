@@ -330,7 +330,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 		OutputDebugString("\nWas writing, now doing timeout");
 		terrible = true;
 		if (!sendPriority || sendPriority && readPriority) {
-			gotEnq = idleReadEnq((DWORD)750);
+			gotEnq = idleReadEnq((DWORD)2750);
 		}
 		inWrite = false;
 	}

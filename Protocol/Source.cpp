@@ -38,7 +38,7 @@ int			Mode = COMMAND_MODE;	//Global variable to switch between modes.
 
 char Name[] = TEXT("Radio Modem Protocol Driver");
 int syncBit = 0;
-bool inWrite = false;
+
 unsigned char * packetize(unsigned char * data);
 unsigned char * depacketize(unsigned char * packet);
 unsigned char getSyncBit();
@@ -260,6 +260,9 @@ boolean checkForSoh(DWORD ms) {
 
 	if (WaitCommEvent(hComm, &dwCommEvent, NULL)) {
 		OutputDebugString("event received");
+		if (GetCommMask(hComm, &dwCommEvent) == 0) {
+
+		}
 		if (dwCommEvent == 0) {
 			OutputDebugString("Killing thrad");
 			ExitThread(0);
@@ -288,7 +291,7 @@ boolean checkForSoh(DWORD ms) {
 	return true;
 }
 void beIdle() {
-	OutputDebugString("\nBEING IDLE");
+	
 		rThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&readThread, (LPVOID)hwnd,
 			0, &rThreadId);
 	
@@ -296,7 +299,6 @@ void beIdle() {
 
 DWORD WINAPI readThread(LPVOID hwnd) {
 	int attempts = 0;
-	PurgeComm(hComm, PURGE_RXCLEAR);
 	idleReadEnq();
 	OutputDebugString("\nBACK IN IDLE OK");
 	acknowledgeEnq();
@@ -313,14 +315,13 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 }
 DWORD WINAPI writeThread(LPVOID hwnd) {
 	sendEnq();
-	while (!(timeoutWait(1000))) {
+	while (!(timeoutWait(100))) {
 		OutputDebugString("\nACK not recieved back ok");
 		writePacket(ENQ);
 	}
 	OutputDebugString("\nACK BACK IN WRITETHREAD OK");
 	writePackets();
 	checkSendPriority();
-	OutputDebugString("\nWRITE THREAD IS DEAD");
 	return 0;
 }
 void checkSendPriority() {
@@ -340,7 +341,6 @@ void writePackets() {
 	unsigned char data[] = "Hello, this is a test. I hope it works because I really dont like this and want to sleep all day...";
 	writeDataPacket(data);
 	while (!timeoutWait(100)) {
-		OutputDebugString("\nTimeoutWait in writePackets did not get ACK");
 		writeDataPacket(data);
 		if (attempts++ == 4) {
 			OutputDebugString("Giving up on writing");
@@ -349,24 +349,17 @@ void writePackets() {
 	}
 }
 boolean idleReadEnq() {
-	OutputDebugString("\nIn idleReadEnq");
-	
+	OutputDebugString("In idleReadEnq");
 	SetCommMask(hComm, EV_RXCHAR);
 	DWORD dwCommEvent = 0;
 	unsigned char buffer[2] = { 0 };
 	OVERLAPPED	osReader = { 0 };
-	
 	osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
-	if (inWrite){
-		WaitCommEvent(hComm, &dwCommEvent, NULL);
-		inWrite = false;
-	}
 	if (WaitCommEvent(hComm, &dwCommEvent, NULL)) {
 		OutputDebugString("event received");
 		if (dwCommEvent == 0) {
 			OutputDebugString("Killing thrad");
-			inWrite = true;
 			ExitThread(0);
 		}
 		do {
@@ -439,17 +432,17 @@ BOOL readInPacket()
 					}
 
 					if (buffer[0] != 0x00) {
-						/*OutputDebugString("[[");
+						OutputDebugString("[[");
 						OutputDebugString((char*)buffer);
 						OutputDebugString("]]\n");
-						//buffer[0] = 0x00;*/
+						//buffer[0] = 0x00;
 					}
 
 					if (buffer[0] != 0x00) {
 						readPacket[index++] = buffer[0];
 					}
 
-					//OutputDebugString((char*)readPacket);
+					OutputDebugString((char*)readPacket);
 					if (buffer[0] == EOT) {
 						OutputDebugString("\nPACKET COMPLETE");
 						unsigned char * aPacket = depacketize(readPacket);
@@ -1253,32 +1246,3 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 	}
 	return 0;
 }
-/*
-void splitFile(HANDLE file) {
-attempts = 0;
-OutputDebugString("In splitFile");
-DWORD dwBytesRead = 0;
-const int MAX = 512;
-bool read;
-char readBuffer[MAX] = { 0 };
-read = ReadFile(file,
-readBuffer,
-MAX - 1,
-&dwBytesRead,
-0);
-OutputDebugString(readBuffer);
-if (dwBytesRead == 511) {
-OutputDebugString("This is 512");
-}
-if (read && dwBytesRead == 0)
-{
-stillWriting = false;
-
-}
-else {
-//char * packet = packetize(readBuffer);
-}
-
-
-}
-*/

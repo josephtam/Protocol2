@@ -239,7 +239,7 @@ will be accompanied with the associated parameter.
 BYTE* getPacket(BYTE, BYTE[]);
 
 bool timeoutWait(DWORD ms) {
-	//PurgeComm(hComm, PURGE_RXCLEAR | PURGE_RXABORT);
+	PurgeComm(hComm, PURGE_RXCLEAR | PURGE_RXABORT);
 
 	SetCommMask(hComm, EV_RXCHAR);
 	DWORD dwCommEvent = 0;
@@ -330,7 +330,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 		OutputDebugString("\nWas writing, now doing timeout");
 		terrible = true;
 		if (!sendPriority || sendPriority && readPriority) {
-			gotEnq = idleReadEnq((DWORD)2050);
+			gotEnq = idleReadEnq((DWORD)750);
 		}
 		inWrite = false;
 	}
@@ -338,7 +338,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 	readPriority = false;
 	if (!gotEnq) {
 		
-		//PurgeComm(hComm, PURGE_RXCLEAR);
+		PurgeComm(hComm, PURGE_RXCLEAR);
 		if (dataToRead) {
 			if (packetsOk.size() == 1)
 				dataToRead = false;
@@ -437,7 +437,7 @@ boolean idleReadEnq(DWORD time) {
 	DWORD dwCommEvent = 0;
 	unsigned char buffer[2] = { 0 };
 	OVERLAPPED	osReader = { 0 };
-	//PurgeComm(hComm, PURGE_RXCLEAR);
+	PurgeComm(hComm, PURGE_RXCLEAR);
 	osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 	if (inWrite) {
 		if (WaitForSingleObject(osReader.hEvent, time)) {

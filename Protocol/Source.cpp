@@ -237,6 +237,7 @@ will be accompanied with the associated parameter.
 BYTE* getPacket(BYTE, BYTE[]);
 
 bool timeoutWait(DWORD ms) {
+	PurgeComm(hComm, PURGE_RXCLEAR);
 	SetCommMask(hComm, EV_RXCHAR);
 	DWORD dwCommEvent = 0;
 	unsigned char buffer[2] = { 0 };
@@ -315,7 +316,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 	if (inWrite) {
 		OutputDebugString("\nWas writing, now doing timeout");
 		terrible = true;
-		gotEnq = idleReadEnq((DWORD)5000);
+		gotEnq = idleReadEnq((DWORD)1000);
 		inWrite = false;
 	}
 	if (!gotEnq) {
@@ -394,10 +395,10 @@ void writePackets() {
 	
 	writeDataPacket(data);
 	while (!timeoutWait(1000)) {
-		OutputDebugString("\nTimeoutWait in writePackets did not get ACK");
+		OutputDebugString("\nTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTimeoutWait in writePackets did not get ACK");
 		writeDataPacket(data);
 		if (attempts++ == 4) {
-			OutputDebugString("Giving up on writing");
+			OutputDebugString("\nGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGiving up on writing");
 			break;
 		}
 	}

@@ -11,11 +11,13 @@
 #include <commctrl.h>
 #include "checksum.h"
 #include <chrono>
+#include <deque>
 // need these at the top:
 enum states { idle, waitPacket, waitAck, waitAck2, wait, sendState, receiveState , sendingPacket};
 states status;
 unsigned char depacketizedData[512];
 DWORD WINAPI readThread(LPVOID hwnd);
+DWORD WINAPI readInFileThread(LPVOID hwnd);
 HANDLE wThread, rThread;
 boolean idleReadEnq();
 using namespace std;
@@ -24,9 +26,11 @@ static const int COMMAND_MODE = 1;
 static const int READY_TO_CONNECT_MODE = 2;
 static const int CONNECT_MODE = 3;
 void checkStatus(BYTE type);
+bool dataToRead = false;
 boolean checkForSoh();
 BOOL writePacket(BYTE type);
 void acknowledgeLine();
+boolean inIdle = false;
 DWORD wThreadId, rThreadId;
 //char Name[] = "Radio Comm";
 void sendEnq();
@@ -42,15 +46,18 @@ bool inWrite = false;
 unsigned char * packetize(unsigned char * data);
 unsigned char * depacketize(unsigned char * packet);
 unsigned char getSyncBit();
+DWORD WINAPI writeThread(LPVOID hwnd);
 BOOL writeDataPacket(unsigned char* data);
 bool sendPriority = false;
 void writePackets();
 bool receievePriority = false;
 char str[80] = "";
+
 BOOL readInPacket();
 bool timeoutWait(DWORD ms);
 void acknowledgeEnq();
 char * readBuffer;
+deque<unsigned char *>packets;
 void checkSendPriority();
 void checkReceivePriority();
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -297,6 +304,13 @@ void beIdle() {
 DWORD WINAPI readThread(LPVOID hwnd) {
 	int attempts = 0;
 	PurgeComm(hComm, PURGE_RXCLEAR);
+	if (dataToRead){
+		if (packets.size() == 1)
+			dataToRead = false;
+		wThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&writeThread, (LPVOID)hwnd,
+			0, &wThreadId);
+
+	}
 	idleReadEnq();
 	OutputDebugString("\nBACK IN IDLE OK");
 	acknowledgeEnq();
@@ -312,6 +326,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 	return 0;
 }
 DWORD WINAPI writeThread(LPVOID hwnd) {
+	OutputDebugString("At top of writeThread");
 	sendEnq();
 	while (!(timeoutWait(1000))) {
 		OutputDebugString("\nACK not recieved back ok");
@@ -324,6 +339,7 @@ DWORD WINAPI writeThread(LPVOID hwnd) {
 	return 0;
 }
 void checkSendPriority() {
+	Sleep(1000);
 	beIdle();
 }
 void checkReceivePriority() {
@@ -350,7 +366,7 @@ void writePackets() {
 }
 boolean idleReadEnq() {
 	OutputDebugString("\nIn idleReadEnq");
-	
+	inIdle = true;
 	SetCommMask(hComm, EV_RXCHAR);
 	DWORD dwCommEvent = 0;
 	unsigned char buffer[2] = { 0 };
@@ -385,7 +401,7 @@ boolean idleReadEnq() {
 
 
 	}
-	
+	inIdle = false;
 	return true;
 }
 
@@ -1036,8 +1052,8 @@ HANDLE selectFile() {
 	OPENFILENAME ofn;       // common dialog box structure
 	char szFile[260];       // buffer for file name
 	HANDLE hf;              // file handle
-
-							// Initialize OPENFILENAME
+	HANDLE readInFile;
+					// Initialize OPENFILENAME
 	ZeroMemory(&ofn, sizeof(ofn));
 	ofn.lStructSize = sizeof(ofn);
 	ofn.hwndOwner = hwnd;
@@ -1064,14 +1080,60 @@ HANDLE selectFile() {
 			OPEN_EXISTING,
 			FILE_ATTRIBUTE_NORMAL,
 			(HANDLE)NULL);
+		readInFile = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&readInFileThread, (LPVOID)hf,
+			0, &wThreadId);
 		return hf;
 	}
 	return NULL;
 }
+DWORD WINAPI readInFileThread(LPVOID hwnd){
+	
+	OutputDebugString("In readFileThread");
+	HANDLE hf = (HANDLE)hwnd;
+	DWORD dwBytesRead = 0;
+	const int MAX = 512;
+	bool read;
+	while (1){
+		OutputDebugString("\nA new sentence");
+		unsigned char readBuffer[MAX] = { 0 };
+		read = ReadFile(hf,
+			readBuffer,
+			MAX - 1,
+			&dwBytesRead,
+			0);
+	//	OutputDebugString(readBuffer);
+		OutputDebugString("\n");
+		if (dwBytesRead == 511) {
+			OutputDebugString("This is 512");
+			packets.push_back(readBuffer);
+		}
+		else{
+			packets.push_back(readBuffer);
+			OutputDebugString("\nLast packet");
+			if (inIdle){
+
+				wThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&writeThread, (LPVOID)hwnd,
+					0, &wThreadId);
+			}
+			return 0;
+		}
+		if (read && dwBytesRead == 0){
+			OutputDebugString("\nI dJosheph knewont know what this check was for");
+			if (packets.size() != 0){
+				//not empty.
+			}
+			return 0;
+		}
+	}
+
+}
 void writingState() {
-	status = sendingPacket;
+	
 	int attempts = 0;
-	unsigned char data[] = "Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.&&&&&";
+	
+	unsigned char* data = packets.front();
+	packets.pop_front();
+	//unsigned char data[] = "Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.&&&&&";
 	while (attempts++ < 5) {
 		writeDataPacket(data);
 		if (timeoutWait(100)) {

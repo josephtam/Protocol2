@@ -12,6 +12,9 @@
 #include "checksum.h"
 #include <chrono>
 #include <deque>
+#include <vector>
+
+
 // need these at the top:
 enum states { idle, waitPacket, waitAck, waitAck2, wait, sendState, receiveState , sendingPacket};
 states status;
@@ -28,7 +31,7 @@ static const int CONNECT_MODE = 3;
 void checkStatus(BYTE type);
 bool dataToRead = false;
 boolean checkForSoh();
-BOOL writePacket(BYTE type);
+BOOL writePacket(BYTE type); vector<unsigned char> dataBuffer;
 void acknowledgeLine();
 boolean inIdle = false;
 DWORD wThreadId, rThreadId;
@@ -57,7 +60,7 @@ BOOL readInPacket();
 bool timeoutWait(DWORD ms);
 void acknowledgeEnq();
 char * readBuffer;
-deque<unsigned char *>packets;
+deque<vector<unsigned char>>packets;
 void checkSendPriority();
 void checkReceivePriority();
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -353,7 +356,10 @@ void acknowledgeEnq() {
 }
 void writePackets() {
 	int attempts = 0;
-	unsigned char* data = packets.front();
+	vector<unsigned char> pack = packets.front();
+	unsigned char * data = reinterpret_cast<unsigned char*> (&pack[0]);
+	
+	
 	packets.pop_front();
 	//unsigned char data[] = "Hello, this is a test. I hope it works because I really dont like this and want to sleep all day...";
 	OutputDebugString("\nIn writePackets");
@@ -1093,15 +1099,18 @@ HANDLE selectFile() {
 	return NULL;
 }
 DWORD WINAPI readInFileThread(LPVOID hwnd){
-	
+	int index = 0;
 	OutputDebugString("In readFileThread");
 	HANDLE hf = (HANDLE)hwnd;
 	DWORD dwBytesRead = 0;
 	const int MAX = 512;
+	
 	bool read;
 	while (1){
+		unsigned char readBuffer[MAX-1];
+		index = 0;
 		OutputDebugString("\nA new sentence");
-		unsigned char  readBuffer[] = { 0 };
+		vector<unsigned char> ok;
 		read = ReadFile(hf,
 			readBuffer,
 			MAX - 1,
@@ -1111,12 +1120,20 @@ DWORD WINAPI readInFileThread(LPVOID hwnd){
 		OutputDebugString("\n");
 		if (dwBytesRead == 511) {
 			OutputDebugString("This is 512");
-			packets.push_back(readBuffer);
-		
+			while (index < dwBytesRead)
+			{
+				
+				ok.push_back(readBuffer[index++]);
+			
+			}
+			packets.push_back(ok);
 			
 		}
 		else{
-			packets.push_back(readBuffer);
+			while (index < dwBytesRead){
+				ok.push_back(readBuffer[index++]);
+			}
+			packets.push_back(ok);
 			OutputDebugString("\nLast packet");
 			if (inIdle){
 

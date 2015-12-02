@@ -274,7 +274,7 @@ boolean checkForSoh(DWORD ms) {
 	if (WaitCommEvent(hComm, &dwCommEvent, NULL)) {
 		OutputDebugString("event received");
 		if (dwCommEvent == 0) {
-			OutputDebugString("Killing thrad");
+			OutputDebugString("\nExit Thread in SOH");
 			ExitThread(0);
 		}
 		do {
@@ -301,18 +301,19 @@ boolean checkForSoh(DWORD ms) {
 	return true;
 }
 void beIdle() {
-	OutputDebugString("\nBEING IDLE");
+	OutputDebugString("\nIn beIdle, the thread should die NOW");
 		rThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&readThread, (LPVOID)hwnd,
 			0, &rThreadId);
 	
 }
 
 DWORD WINAPI readThread(LPVOID hwnd) {
+	OutputDebugString("\nREAD THREAD STARTING");
 	int attempts = 0;
 	bool gotEnq = false;
 	terrible = false;
 	if (inWrite) {
-		OutputDebugString("Was writing, now doing timeout");
+		OutputDebugString("\nWas writing, now doing timeout");
 		terrible = true;
 		gotEnq = idleReadEnq((DWORD)5000);
 		inWrite = false;
@@ -323,12 +324,15 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 		if (dataToRead) {
 			if (packetsOk.size() == 1)
 				dataToRead = false;
+			OutputDebugString("\nStarting write thread");
 			wThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&writeThread, (LPVOID)hwnd,
 				0, &wThreadId);
 			inWrite = true;
+			OutputDebugString("\nKilling read thread in readThread");
 			ExitThread;
 			}
 		else {
+			OutputDebugString("Going to wait for ENQ, INFINITE");
 		idleReadEnq(INFINITE);
 		}
 		
@@ -336,44 +340,47 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 	}
 		
 	
-	OutputDebugString("\nBACK IN IDLE OK");
+	OutputDebugString("\nAknowledging ACK in read thread");
 	acknowledgeEnq();
 
 	while (!checkForSoh(READ_TIMEOUT)) {
 		if (attempts++ == 4) {
-			OutputDebugString("Giving up on reading SOH OK");
+			OutputDebugString("\nGiving up on reading SOH OK");
 			break;
 		}
 	}
+	OutputDebugString("\nReading in packet");
 	readInPacket();
+	OutputDebugString("\nRead packet DONE -- checking receive priority.");
 	checkReceivePriority();
+	OutputDebugString("\nREAD THREAD ENDING");
 	return 0;
 }
 DWORD WINAPI writeThread(LPVOID hwnd) {
-	
+	OutputDebugString("\nWRITE THREAD STARTING");
+	OutputDebugString("\nTop of WRITE, sending ENQ");
 	sendEnq();
 	while (!(timeoutWait(1500))) {
 
 		writePacket(ENQ);
 	}
-
+	OutputDebugString("\nWriting a packet");
 	writePackets();
+	OutputDebugString("\nCheck send priority in writeThread");
 	checkSendPriority();
-	
+	OutputDebugString("\nWRITE THREAD ENDING");
 	return 0;
 }
 void checkSendPriority() {
-	Sleep(3000);
+	//Sleep(3000);
 	beIdle();
 }
 void checkReceivePriority() {
-	Sleep(3000);
+	//Sleep(3000);
 	beIdle();
 }
 void acknowledgeEnq() {
 	writePacket(ACK);
-	
-	OutputDebugString("\nSENDING BACK ACK OK");
 
 }
 void writePackets() {
@@ -397,7 +404,7 @@ void writePackets() {
 }
 boolean idleReadEnq(DWORD time) {
 	
-	OutputDebugString("\nIn idleReadEnq");
+
 	inIdle = true;
 	SetCommMask(hComm, EV_RXCHAR);
 	DWORD dwCommEvent = 0;
@@ -413,9 +420,9 @@ boolean idleReadEnq(DWORD time) {
 	if (WaitCommEvent(hComm, &dwCommEvent, NULL)) {
 		OutputDebugString("event received");
 		if (dwCommEvent == 0) {
-			OutputDebugString("Killing thrad");
 			inWrite = true;
 			inIdle = false;
+			OutputDebugString("\nKilling thread in idleReadEnq");
 			ExitThread(0);
 		}
 		do {
@@ -423,7 +430,7 @@ boolean idleReadEnq(DWORD time) {
 			if (!ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader)) {
 				if (GetLastError() == ERROR_IO_PENDING) {
 					if (WaitForSingleObject(osReader.hEvent, time)) {
-						OutputDebugString("\nWas in timeout after sending, I think?");
+					
 						inIdle = false;
 						return false;
 						
@@ -435,7 +442,7 @@ boolean idleReadEnq(DWORD time) {
 			
 		} 
 		while (buffer[0] != ENQ);
-		OutputDebugString("ENQ RECEIVED OK");
+
 
 
 
@@ -447,7 +454,7 @@ boolean idleReadEnq(DWORD time) {
 void sendEnq() {
 	SetCommMask(hComm, EV_KILL_THREAD);
 	writePacket(ENQ);
-	OutputDebugString("Sending an ENQ\n");
+
 	//if (timeoutWait(500)) {
 		//unsigned char data[] = "Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.";
 		//writingState();
@@ -471,7 +478,7 @@ BOOL readInPacket()
 	DWORD		dwRead, dwCommEvent, dwRes;		//event checkers
 	OVERLAPPED	osReader = { 0 };				//Contains information used in asynchronous 
 	readPacket[0] = SOH;									//(or overlapped) input and output (I/O).
-	OutputDebugString("\nAt the top of readInPacket");
+
 	
 	if (!SetCommMask(hComm, EV_RXCHAR)) {
 		OutputDebugString("Set comm mask failed");
@@ -506,7 +513,7 @@ BOOL readInPacket()
 
 					//OutputDebugString((char*)readPacket);
 					if (buffer[0] == EOT) {
-						OutputDebugString("\nPACKET COMPLETE");
+						
 						unsigned char * aPacket = depacketize(readPacket);
 						if (aPacket != 0x00) {
 							OutputDebugString("\nPacket received properly");
@@ -537,7 +544,7 @@ BOOL readInPacket()
 			}
 			else {
 				if (WaitForSingleObject(osReader.hEvent, READ_TIMEOUT)) {
-					OutputDebugString("\nRead Timeout Ok??");
+				
 					return false;
 				}
 
@@ -549,8 +556,6 @@ BOOL readInPacket()
 
 		}
 	}
-	OutputDebugString("Connection Read: Read thread ended\n");
-	 //Close the event.
 	
 	return 0;
 }
@@ -660,7 +665,7 @@ BOOL ConnectionWrite(HWND hwnd, BYTE message[], size_t size) // need this to poi
 			OutputDebugString("Connection Write: writefile returned true\n");
 		}
 	}
-	OutputDebugString("Connection Write: index " + (int)index);
+
 	OutputDebugString("Connection Write: Write thread ended\n");
 	CloseHandle(osWrite.hEvent);
 

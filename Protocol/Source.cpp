@@ -310,9 +310,9 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 	int attempts = 0;
 	bool gotEnq = false;
 	if (inWrite) {
-		gotEnq = idleReadEnq((DWORD)500);
+		gotEnq = idleReadEnq((DWORD)1000);
 		inWrite = false;
-	}
+	
 	if (!gotEnq) {
 		
 		PurgeComm(hComm, PURGE_RXCLEAR);
@@ -324,8 +324,11 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 			inWrite = true;
 
 		}
+	}}
+	else {
+
+		idleReadEnq(INFINITE);
 	}
-	idleReadEnq(INFINITE);
 	OutputDebugString("\nBACK IN IDLE OK");
 	acknowledgeEnq();
 
@@ -353,7 +356,7 @@ DWORD WINAPI writeThread(LPVOID hwnd) {
 	return 0;
 }
 void checkSendPriority() {
-	Sleep(1000);
+	//Sleep(1000);
 	beIdle();
 }
 void checkReceivePriority() {
@@ -397,8 +400,8 @@ boolean idleReadEnq(DWORD time) {
 	osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
 	if (inWrite){
-		WaitCommEvent(hComm, &dwCommEvent, NULL);
-		inWrite = false;
+		//WaitCommEvent(hComm, &dwCommEvent, NULL);
+		//inWrite = false;
 	}
 	if (WaitCommEvent(hComm, &dwCommEvent, NULL)) {
 		OutputDebugString("event received");

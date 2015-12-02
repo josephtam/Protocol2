@@ -599,11 +599,11 @@ BOOL readInPacket()
 					}
 
 					//OutputDebugString((char*)readPacket);
-					if (buffer[0] == EOT || index == 516) {
+					if (buffer[0] == EOT || index == 515) {
 						if (buffer[0] != EOT) {
 							OutputDebugString("It works ook");
 						}
-						else if(index == 516){
+						else if(index == 515){
 							OutputDebugString("hit end of packet");
 
 						}

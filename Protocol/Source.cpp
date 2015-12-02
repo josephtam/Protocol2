@@ -380,8 +380,7 @@ void writePackets() {
 	const unsigned char * data = reinterpret_cast<const unsigned char *> (temp.c_str());
 
 	//unsigned char data[] = "Hello, this is a test. I hope it works because I really dont like this and want to sleep all day...";
-	OutputDebugString("\nIn writePackets");
-	OutputDebugString((char *)data);
+	
 	writeDataPacket(data);
 	while (!timeoutWait(100)) {
 		OutputDebugString("\nTimeoutWait in writePackets did not get ACK");
@@ -412,6 +411,7 @@ boolean idleReadEnq(DWORD time) {
 		if (dwCommEvent == 0) {
 			OutputDebugString("Killing thrad");
 			inWrite = true;
+			inIdle = false;
 			ExitThread(0);
 		}
 		do {
@@ -420,6 +420,7 @@ boolean idleReadEnq(DWORD time) {
 				if (GetLastError() == ERROR_IO_PENDING) {
 					if (WaitForSingleObject(osReader.hEvent, time)) {
 						OutputDebugString("\nWas in timeout after sending, I think?");
+						inIdle = false;
 						return false;
 						
 					}
@@ -1132,10 +1133,10 @@ DWORD WINAPI readInFileThread(LPVOID hwnd){
 				}*/
 			if (inIdle){
 				dataToRead = true;
-				
-
 				wThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&writeThread, (LPVOID)hwnd,
 					0, &wThreadId);
+			}else{
+				dataToRead = true;
 			}
 			OutputDebugString("\nLast packet");
 			return 0;

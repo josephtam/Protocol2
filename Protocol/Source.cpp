@@ -30,6 +30,7 @@ static const int COMMAND_MODE = 1;
 static const int READY_TO_CONNECT_MODE = 2;
 static const int CONNECT_MODE = 3;
 void checkStatus(BYTE type);
+bool terrible = false;
 bool dataToRead = false;
 boolean checkForSoh();
 BOOL writePacket(BYTE type); vector<unsigned char> dataBuffer;
@@ -309,8 +310,10 @@ void beIdle() {
 DWORD WINAPI readThread(LPVOID hwnd) {
 	int attempts = 0;
 	bool gotEnq = false;
+	terrible = false;
 	if (inWrite) {
 		OutputDebugString("Was writing, now doing timeout");
+		terrible = true;
 		gotEnq = idleReadEnq((DWORD)5000);
 		inWrite = false;
 	}
@@ -323,7 +326,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 			wThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&writeThread, (LPVOID)hwnd,
 				0, &wThreadId);
 			inWrite = true;
-
+			ExitThread;
 			}
 		else {
 		idleReadEnq(INFINITE);
@@ -402,7 +405,7 @@ boolean idleReadEnq(DWORD time) {
 	
 	osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
-	if (inWrite){
+	if (inWrite && !terrible){
 		WaitCommEvent(hComm, &dwCommEvent, NULL);
 		inWrite = false;
 	}

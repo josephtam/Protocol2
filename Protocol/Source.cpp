@@ -1095,6 +1095,7 @@ HANDLE selectFile() {
 			(HANDLE)NULL);
 		readInFile = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&readInFileThread, (LPVOID)hf,
 			0, &wThreadId);
+		
 		return hf;
 	}
 	return NULL;
@@ -1148,6 +1149,7 @@ DWORD WINAPI readInFileThread(LPVOID hwnd){
 				dataToRead = true;
 			}
 			OutputDebugString("\nLast packet");
+			CloseHandle(hf);
 			return 0;
 		}
 		else if (read && dwBytesRead == 0){
@@ -1160,10 +1162,11 @@ DWORD WINAPI readInFileThread(LPVOID hwnd){
 				wThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&writeThread, (LPVOID)hwnd,
 					0, &wThreadId);
 			}
+			CloseHandle(hf);
 			return 0;
 		}
 	}
-
+	CloseHandle(hf);
 }
 /*void writingState() {
 	

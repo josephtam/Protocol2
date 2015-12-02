@@ -317,7 +317,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 	if (inWrite) {
 		OutputDebugString("\nWas writing, now doing timeout");
 		terrible = true;
-		gotEnq = idleReadEnq((DWORD)500);
+		gotEnq = idleReadEnq((DWORD)5000);
 		inWrite = false;
 	}
 	if (!gotEnq) {
@@ -396,7 +396,7 @@ void writePackets() {
 	//unsigned char data[] = "Hello, this is a test. I hope it works because I really dont like this and want to sleep all day...";
 	
 	writeDataPacket(data);
-	while (!timeoutWait(1000)) {
+	while (!timeoutWait(200)) {
 		OutputDebugString("\nTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTimeoutWait in writePackets did not get ACK");
 		writeDataPacket(data);
 		if (attempts++ == 2) {
@@ -524,7 +524,8 @@ BOOL readInPacket()
 							writePacket(ACK);
 							OutputDebugString("\nTHe packet is: ");
 							OutputDebugString("\n");
-							AppendText(hOutput, (TCHAR *)readPacket);
+							
+							AppendText(hOutput, (TCHAR *)aPacket);
 							CloseHandle(osReader.hEvent);
 							writePacket(ACK);
 							return true;
@@ -1108,10 +1109,13 @@ DWORD WINAPI readInFileThread(LPVOID hwnd){
 	HANDLE hf = (HANDLE)hwnd;
 	DWORD dwBytesRead = 0;
 	const int MAX = 512;
-	
+	char readBuffer[MAX];
 	bool read;
 	while (1){
-		char readBuffer[MAX];
+		
+		for (int i = 0; i < MAX; i++) {
+			readBuffer[i] = 0;
+		}
 		dwBytesRead = 0;
 		index = 0;
 		OutputDebugString("\nA new sentence");
@@ -1124,6 +1128,7 @@ DWORD WINAPI readInFileThread(LPVOID hwnd){
 	//	OutputDebugString(readBuffer);
 		OutputDebugString("\n");
 		if (dwBytesRead == 511) {
+			OutputDebugString("512");
 			readBuffer[511] = 0;
 			string s = readBuffer;
 			packetsOk.push_back(s);
@@ -1131,6 +1136,8 @@ DWORD WINAPI readInFileThread(LPVOID hwnd){
 			
 		}
 		else if (dwBytesRead > 0){
+			OutputDebugString("NOT 512");
+
 			string s = readBuffer;
 			readBuffer[dwBytesRead] = 0;
 			packetsOk.push_back(s);
@@ -1148,6 +1155,8 @@ DWORD WINAPI readInFileThread(LPVOID hwnd){
 			return 0;
 		}
 		else if (read && dwBytesRead == 0){
+		
+
 			OutputDebugString("\nI dJosheph knewont know what this check was for");
 			if (packetsOk.size() != 0){
 				dataToRead = true;
@@ -1326,7 +1335,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 	case WM_DESTROY:	// Terminate program
 		OutputDebugString("Destroyed Mode=" + Mode);
 		CloseHandle(hComm);
-		CloseHandle(hThrd);
+		//CloseHandle(hThrd);
 		PostQuitMessage(0);
 		break;
 	default:

@@ -17,12 +17,12 @@
 
 
 unsigned char depacketizedData[512];
+
+using namespace std;
 DWORD WINAPI readThread(LPVOID hwnd);
 DWORD WINAPI readInFileThread(LPVOID hwnd);
 HANDLE wThread, rThread;
 boolean idleReadEnq(DWORD time);
-using namespace std;
-
 static const int COMMAND_MODE = 1;
 static const int READY_TO_CONNECT_MODE = 2;
 static const int CONNECT_MODE = 3;
@@ -310,10 +310,7 @@ boolean checkForSoh(DWORD ms) {
 		} while (buffer[0] != SOH);
 		OutputDebugString("\nSOH RECEIVED OK");
 
-
-
 	}
-
 
 	return true;
 }
@@ -334,7 +331,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 		OutputDebugString("\nWas writing, now doing timeout");
 		terrible = true;
 		if (!sendPriority || sendPriority && readPriority) {
-			gotEnq = idleReadEnq((DWORD)750);
+			gotEnq = idleReadEnq((DWORD)500);
 		}
 		else {
 
@@ -387,7 +384,7 @@ DWORD WINAPI writeThread(LPVOID hwnd) {
 	OutputDebugString("\nTop of WRITE, sending ENQ");
 	sendEnq();
 	int attempts = 1;
-	while (!(timeoutWait(1000))) {
+	while (!(timeoutWait(500))) {
 		if (attempts++ == 4) {
 			beIdle();
 			ExitThread(1);

@@ -311,7 +311,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 	bool gotEnq = false;
 	if (inWrite) {
 		OutputDebugString("Was writing, now doing timeout");
-		gotEnq = idleReadEnq((DWORD)5000);
+		gotEnq = idleReadEnq((DWORD)50000);
 		inWrite = false;
 	}
 	if (!gotEnq) {
@@ -382,7 +382,7 @@ void writePackets() {
 	//unsigned char data[] = "Hello, this is a test. I hope it works because I really dont like this and want to sleep all day...";
 	
 	writeDataPacket(data);
-	while (!timeoutWait(1000)) {
+	while (!timeoutWait(10000)) {
 		OutputDebugString("\nTimeoutWait in writePackets did not get ACK");
 		writeDataPacket(data);
 		if (attempts++ == 4) {
@@ -574,9 +574,6 @@ BOOL readInPacket()
 	return true;
 
 }*/
-void waitForPacket() {
-
-}
 
 BOOL OpenPort(HWND hwnd)
 {

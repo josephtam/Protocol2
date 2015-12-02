@@ -388,7 +388,7 @@ void writePackets() {
 	int attempts = 0;
 	string temp = packetsOk.front();
 	temp = temp.substr(0, temp.size() - 1);
-	
+	packetsOk.pop_front(); 
 	const unsigned char * data = reinterpret_cast<const unsigned char *> (temp.c_str());
 
 	//unsigned char data[] = "Hello, this is a test. I hope it works because I really dont like this and want to sleep all day...";
@@ -402,7 +402,6 @@ void writePackets() {
 			break;
 		}
 	}
-	packetsOk.pop_front();
 }
 boolean idleReadEnq(DWORD time) {
 	

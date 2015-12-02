@@ -328,7 +328,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 DWORD WINAPI writeThread(LPVOID hwnd) {
 	OutputDebugString("At top of writeThread");
 	sendEnq();
-	while (!(timeoutWait(1000))) {
+	while (!(timeoutWait(150))) {
 		OutputDebugString("\nACK not recieved back ok");
 		writePacket(ENQ);
 	}
@@ -339,7 +339,7 @@ DWORD WINAPI writeThread(LPVOID hwnd) {
 	return 0;
 }
 void checkSendPriority() {
-	Sleep(1000);
+	Sleep(5000);
 	beIdle();
 }
 void checkReceivePriority() {
@@ -353,7 +353,11 @@ void acknowledgeEnq() {
 }
 void writePackets() {
 	int attempts = 0;
-	unsigned char data[] = "Hello, this is a test. I hope it works because I really dont like this and want to sleep all day...";
+	unsigned char* data = packets.front();
+	packets.pop_front();
+	//unsigned char data[] = "Hello, this is a test. I hope it works because I really dont like this and want to sleep all day...";
+	OutputDebugString("\nIn writePackets");
+	OutputDebugString((char *)data);
 	writeDataPacket(data);
 	while (!timeoutWait(100)) {
 		OutputDebugString("\nTimeoutWait in writePackets did not get ACK");
@@ -846,7 +850,7 @@ HWND CreateOutputWindow(HWND hwndParent)
 ---------------------------------------------------------------------------------*/
 unsigned char * packetize(unsigned char * data) {
 	//int dataSize = sizeof(data);
-
+	
 	unsigned char * x = (unsigned char*)data;
 	int dataSize = strlen((char*)x);
 
@@ -1025,6 +1029,8 @@ void resizeOutputWindow() {
 
 
 BOOL writeDataPacket(unsigned char * data) {
+	OutputDebugString("\nIn writeDataPacket");
+	OutputDebugString((char *)data);
 	unsigned char * packet = packetize(data);
 	size_t size = strlen((char *)data) < 512 ? strlen((char *)data) + 5 : strlen((char *)data) + 4;
 	if (packet[0] == NULL) {
@@ -1095,7 +1101,7 @@ DWORD WINAPI readInFileThread(LPVOID hwnd){
 	bool read;
 	while (1){
 		OutputDebugString("\nA new sentence");
-		unsigned char readBuffer[MAX] = { 0 };
+		unsigned char  readBuffer[] = { 0 };
 		read = ReadFile(hf,
 			readBuffer,
 			MAX - 1,
@@ -1106,6 +1112,8 @@ DWORD WINAPI readInFileThread(LPVOID hwnd){
 		if (dwBytesRead == 511) {
 			OutputDebugString("This is 512");
 			packets.push_back(readBuffer);
+		
+			
 		}
 		else{
 			packets.push_back(readBuffer);
@@ -1127,12 +1135,14 @@ DWORD WINAPI readInFileThread(LPVOID hwnd){
 	}
 
 }
-void writingState() {
+/*void writingState() {
 	
 	int attempts = 0;
 	
 	unsigned char* data = packets.front();
 	packets.pop_front();
+	OutputDebugString("\nThe packet is: ");
+	OutputDebugString((char *)data);
 	//unsigned char data[] = "Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.&&&&&";
 	while (attempts++ < 5) {
 		writeDataPacket(data);
@@ -1144,7 +1154,7 @@ void writingState() {
 			OutputDebugString("Ack not received");
 		}
 	}
-}
+}*/
 LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 	WPARAM wParam, LPARAM lParam)
 {

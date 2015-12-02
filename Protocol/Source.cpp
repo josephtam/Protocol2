@@ -547,10 +547,7 @@ BOOL readInPacket()
 	OVERLAPPED	osReader = { 0 };				//Contains information used in asynchronous 
 	readPacket[0] = SOH;									//(or overlapped) input and output (I/O).
 
-	for (int i = 0; i < 516; i++) {
-		readPacket[i] = 0;
-		//readBuffer[i] = 0;
-	}
+	
 	if (!SetCommMask(hComm, EV_RXCHAR)) {
 		OutputDebugString("Set comm mask failed");
 	}
@@ -584,7 +581,7 @@ BOOL readInPacket()
 
 					//OutputDebugString((char*)readPacket);
 					if (buffer[0] == EOT || index == 516) {
-						
+					
 						unsigned char * aPacket = depacketize(readPacket);
 						if (aPacket != 0x00) {
 							OutputDebugString("\nPacket received properly");

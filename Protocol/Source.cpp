@@ -29,6 +29,7 @@ void checkPriority(states cur);
 static const int COMMAND_MODE = 1;
 static const int READY_TO_CONNECT_MODE = 2;
 static const int CONNECT_MODE = 3;
+bool buttonPriority = false;
 void checkStatus(BYTE type);
 bool terrible = false;
 bool dataToRead = false;
@@ -329,7 +330,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 		OutputDebugString("\nWas writing, now doing timeout");
 		terrible = true;
 		if (!sendPriority || sendPriority && readPriority) {
-			gotEnq = idleReadEnq((DWORD)500);
+			gotEnq = idleReadEnq((DWORD)750);
 		}
 		inWrite = false;
 	}
@@ -377,9 +378,13 @@ DWORD WINAPI writeThread(LPVOID hwnd) {
 	OutputDebugString("\nWRITE THREAD STARTING");
 	OutputDebugString("\nTop of WRITE, sending ENQ");
 	sendEnq();
-	while (!(timeoutWait(150))) {
-
-		writePacket(ENQ);
+	while (!(timeoutWait(250))) {
+		if (buttonPriority) {
+			writePacket(DC2);
+		}
+		else {
+			writePacket(ENQ);
+		}
 	}
 	OutputDebugString("\nWriting a packet");
 	writePackets();
@@ -398,6 +403,9 @@ void checkReceivePriority() {
 	beIdle();
 }
 void acknowledgeEnq() {
+	if (buttonPriority) {
+		writePacket(DC1);
+	}
 	writePacket(ACK);
 
 }
@@ -472,8 +480,12 @@ boolean idleReadEnq(DWORD time) {
 
 void sendEnq() {
 	SetCommMask(hComm, EV_KILL_THREAD);
-	writePacket(ENQ);
-
+	if (buttonPriority) {
+		writePacket(DC2);
+	}
+	else {
+		writePacket(ENQ);
+	}
 	//if (timeoutWait(500)) {
 		//unsigned char data[] = "Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.";
 		//writingState();
@@ -536,13 +548,20 @@ BOOL readInPacket()
 						unsigned char * aPacket = depacketize(readPacket);
 						if (aPacket != 0x00) {
 							OutputDebugString("\nPacket received properly");
-							writePacket(ACK);
+							//writePacket(ACK);
+
 							OutputDebugString("\nTHe packet is: ");
 							OutputDebugString("\n");
 							
 							AppendText(hOutput, (TCHAR *)aPacket);
 							CloseHandle(osReader.hEvent);
-							writePacket(ACK);
+							if (buttonPriority) {
+								writePacket(DC1);
+							}
+							else {
+								writePacket(ACK);
+							}
+						
 							return true;
 
 						}

@@ -407,6 +407,7 @@ void acknowledgeEnq() {
 		writePacket(DC1);
 	}
 	else {
+		OutputDebugString("sending back ack");
 		writePacket(ACK);
 
 	}
@@ -447,19 +448,20 @@ boolean idleReadEnq(DWORD time) {
 			if (!ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader)) {
 				if (GetLastError() == ERROR_IO_PENDING) {
 					if (WaitForSingleObject(osReader.hEvent, time)) {
-						
+
 						inIdle = false;
 						return false;
 
 					}
 
 				}
+				}
 				if (buffer[0] == ENQ) {
 					inIdle = false;
 					inWrite = false;
 					return true;
 					//writePacket(ACK);
-				}
+				
 			}
 			inIdle = false;
 			inWrite = false;
@@ -501,9 +503,7 @@ boolean idleReadEnq(DWORD time) {
 
 
 	}
-	else {
-		OutputDebugString("Hello world");
-	}
+	
 	inIdle = false;
 	return true;
 }

@@ -133,6 +133,7 @@ void writeToOutputFile(HANDLE writeFile, char* message) {
 	if (writeFile != NULL) {
 		SetFilePointer(writeFile, 0, NULL, FILE_END);
 		WriteFile(writeFile, message, strlen(message), &dwWritten, NULL);
+		CloseHandle(writeFile);
 		OutputDebugString("wrote to file\n");
 	}
 	else {

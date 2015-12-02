@@ -40,6 +40,7 @@ boolean inIdle = false;
 bool readPriority = false;
 bool display = true;
 DWORD wThreadId, rThreadId;
+HANDLE hWriteFile;
 //char Name[] = "Radio Comm";
 void sendEnq();
 //LPCSTR lpszCommName = "COM1";
@@ -327,6 +328,7 @@ void beIdle() {
 }
 
 DWORD WINAPI readThread(LPVOID hwnd) {
+	updateStatistic(hList, sent, received, fail);
 	OutputDebugString("\nREAD THREAD STARTING");
 	int attempts = 0;
 	bool gotEnq = false;
@@ -608,6 +610,7 @@ BOOL readInPacket()
 							OutputDebugString("\n");
 							if (display) {
 								AppendText(hOutput, (TCHAR *)aPacket);
+								writeToOutputFile(hWriteFile, (char*)aPacket);
 							}
 							
 							CloseHandle(osReader.hEvent);
@@ -835,9 +838,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hprevInstance,
 
 	hList = CreateListView(hwnd);
 
-	updateStatistic(hList, PKT_SENT, 56);
-	updateStatistic(hList, PKT_RCV, 156);
-	updateStatistic(hList, PKT_DROP, 256);
+	updateStatistic(hList, 0, 0, 0);
 
 	hConnectToggleBtn = CreateWindow(
 		"BUTTON",
@@ -880,6 +881,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hprevInstance,
 		NULL);
 	ShowWindow(hwnd, nCmdShow);
 	UpdateWindow(hwnd);
+
+	hWriteFile = CreateFileForWriting();
 
 	while (GetMessage(&Msg, NULL, 0, 0))
 	{

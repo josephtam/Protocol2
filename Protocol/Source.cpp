@@ -797,7 +797,7 @@ HWND CreateOutputWindow(HWND hwndParent)
 --
 --	PROGRAMMER:	Gabriella Cheung
 --
---	INTERFACE:	char * packetize(char * data)
+--	INTERFACE:	unsigned char * packetize(unsigned char * data)
 --
 --	PARAMETER:	data - char array containing chars to be packetized
 --
@@ -831,7 +831,7 @@ unsigned char * packetize(unsigned char * data) {
 
 	packet = new unsigned char[packetSize];
 
-	packet[0] = SOH; //SOH
+	packet[0] = SOH;
 
 	packet[1] = getSyncBit();
 
@@ -862,19 +862,19 @@ unsigned char * packetize(unsigned char * data) {
 --
 --	DATE:		Nov 25, 2015
 --
---	REVISIONS:	Nov 25, 2015 -
+--	REVISIONS:	Dec 1, 2015 - Modify so function will work with 516-byte packets
 --
 --	DESIGNER:	Gabriella Cheung
 --
 --	PROGRAMMER:	Gabriella Cheung
 --
---	INTERFACE:	char * depacketize(char * packet)
+--	INTERFACE:	unsigned char * depacketize(unsigned char * packet)
 --
 --	PARAMETER:	packet - char array received from serial port
 --
 --	RETURNS:	- an empty string if packet is not in correct format:
---					- size is 0 or over 516 bytes
---					- if first byte is not SoH
+--					- size is 0
+--					- if first byte is not SOH
 --					- if second byte is not the correct sync bit
 --					- if checksum is not 0
 --				- a char array containing the data if packet is valid

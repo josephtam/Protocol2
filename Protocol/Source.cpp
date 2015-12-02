@@ -47,7 +47,7 @@ int			Mode = COMMAND_MODE;	//Global variable to switch between modes.
 char Name[] = TEXT("Radio Modem Protocol Driver");
 int syncBit = 0;
 bool inWrite = false;
-vector<string> packetsOk;
+deque<string> packetsOk;
 unsigned char * packetize(const unsigned char * data);
 unsigned char * depacketize(unsigned char * packet);
 unsigned char getSyncBit();
@@ -344,7 +344,7 @@ DWORD WINAPI writeThread(LPVOID hwnd) {
 	return 0;
 }
 void checkSendPriority() {
-	Sleep(5000);
+	Sleep(1000);
 	beIdle();
 }
 void checkReceivePriority() {
@@ -359,6 +359,7 @@ void acknowledgeEnq() {
 void writePackets() {
 	int attempts = 0;
 	string temp = packetsOk.front();
+	packetsOk.pop_front(); 
 	const unsigned char * data = reinterpret_cast<const unsigned char *> (temp.c_str());
 	
 	
@@ -528,37 +529,7 @@ BOOL readInPacket()
 	
 	return 0;
 }
-void checkStatus(BYTE type) {
-	if (type == ACK) {
-		if (status == idle) {
-			writePacket(ACK);
-			status = waitPacket;
-			OutputDebugString("Waiting for packet---");
-				
-		}
-	}
-}
-void checkPriority(states cur) {
-	if (sendPriority && cur == receiveState) {
-		//no timeout
-	}
-	else if (sendPriority && cur == sendState) {
-		//short timeout
-	}
-	else if (cur == receiveState) {
-		//short timeout -- for going from send to idle
-	}
-	else {
-		//no timeout, go to idle
-	}
-	status = idle;
-}
-void acknowledgeLine() {
-	writePacket(ACK);
-	status = waitPacket;
-	
 
-}
 /*bool timeoutWait(DWORD ms) {
 	SetCommMask(hComm, EV_RXCHAR);
 	DWORD dwCommEvent = 0;
@@ -870,7 +841,7 @@ unsigned char * packetize(const unsigned char * data) {
 	unsigned char * packet;
 	int packetSize = dataSize + 4;
 
-	if (dataSize < 512) {
+	if (dataSize < 513) {
 		packetSize++; //need to add EOT
 	}
 
@@ -883,7 +854,7 @@ unsigned char * packetize(const unsigned char * data) {
 	checksum *chk = new checksum();
 	chk->clear();
 
-	for (int i = 0; i < dataSize; i++) {
+	for (int i = 0; i < dataSize - 1; i++) {
 		chk->add(data[i]);
 	}
 
@@ -893,10 +864,10 @@ unsigned char * packetize(const unsigned char * data) {
 	packet[3] = checksum[1];
 
 	int i;
-	for (i = 0; i < dataSize; i++) {
+	for (i = 0; i < dataSize - 1; i++) {
 		packet[4 + i] = data[i];
 	}
-	if (dataSize < 512) {
+	if (dataSize < 513) {
 		packet[4 + i] = EOT; //add EOT
 	}
 	return packet;
@@ -1106,7 +1077,7 @@ DWORD WINAPI readInFileThread(LPVOID hwnd){
 	OutputDebugString("In readFileThread");
 	HANDLE hf = (HANDLE)hwnd;
 	DWORD dwBytesRead = 0;
-	const int MAX = 511;
+	const int MAX = 512;
 	
 	bool read;
 	while (1){
@@ -1121,8 +1092,8 @@ DWORD WINAPI readInFileThread(LPVOID hwnd){
 			0);
 	//	OutputDebugString(readBuffer);
 		OutputDebugString("\n");
-		if (dwBytesRead == 510) {
-			readBuffer[510] = 0;
+		if (dwBytesRead == 511) {
+			readBuffer[511] = 0;
 			string s = readBuffer;
 			packetsOk.push_back(s);
 			OutputDebugString("This is 512");

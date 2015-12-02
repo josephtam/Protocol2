@@ -1253,3 +1253,32 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 	}
 	return 0;
 }
+/*
+void splitFile(HANDLE file) {
+attempts = 0;
+OutputDebugString("In splitFile");
+DWORD dwBytesRead = 0;
+const int MAX = 512;
+bool read;
+char readBuffer[MAX] = { 0 };
+read = ReadFile(file,
+readBuffer,
+MAX - 1,
+&dwBytesRead,
+0);
+OutputDebugString(readBuffer);
+if (dwBytesRead == 511) {
+OutputDebugString("This is 512");
+}
+if (read && dwBytesRead == 0)
+{
+stillWriting = false;
+
+}
+else {
+//char * packet = packetize(readBuffer);
+}
+
+
+}
+*/

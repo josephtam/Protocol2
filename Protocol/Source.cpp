@@ -985,12 +985,12 @@ unsigned char getSyncBit() {
 void resizeOutputWindow() {
 	RECT rcClient;
 	GetClientRect(hwnd, &rcClient);
-	size_t listViewWidth = rcClient.right - rcClient.left - SIZE_BTN_ROW;
+	size_t outputWindowWidth = rcClient.right - rcClient.left - SIZE_BTN_ROW;
 	MoveWindow(
 		hOutput,
 		SIZE_BTN_ROW,
 		0,
-		listViewWidth,
+		outputWindowWidth,
 		rcClient.bottom - rcClient.top,
 		TRUE
 	);
@@ -1081,7 +1081,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 
 	switch (Message)
 	{
-	case WM_SIZING:
+	case WM_SIZE:
 		resizeOutputWindow();
 		break;
 	case WM_COMMAND:

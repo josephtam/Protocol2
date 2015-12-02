@@ -23,5 +23,5 @@ static const char* DISPLAY_OFF = "Display Off";
 HWND CreateOutputWindow(HWND hwndParent);
 void AppendText(const HWND &hwnd, TCHAR *newText);
 void resizeOutputWindow();
-HWND CreateListView(HWND hwndParent);
+HWND CreateListView(const HWND &hwndParent);
 void updateStatistic(HWND hList, int rowNum, int n);

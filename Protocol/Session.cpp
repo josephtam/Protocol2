@@ -52,7 +52,7 @@ void AppendText(const HWND &hwnd, TCHAR *message)
 	SendMessage(hwnd, EM_SETSEL, StartPos, EndPos);
 }
 
-HWND CreateListView(HWND hwndParent)
+HWND CreateListView(const HWND &hwndParent)
 {
 	RECT rcClient;
 	GetClientRect(hwndParent, &rcClient);

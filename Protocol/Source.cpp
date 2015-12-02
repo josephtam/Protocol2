@@ -38,7 +38,7 @@ int			Mode = COMMAND_MODE;	//Global variable to switch between modes.
 
 char Name[] = TEXT("Radio Modem Protocol Driver");
 int syncBit = 0;
-
+bool inWrite = false;
 unsigned char * packetize(unsigned char * data);
 unsigned char * depacketize(unsigned char * packet);
 unsigned char getSyncBit();
@@ -340,6 +340,7 @@ void writePackets() {
 	unsigned char data[] = "Hello, this is a test. I hope it works because I really dont like this and want to sleep all day...";
 	writeDataPacket(data);
 	while (!timeoutWait(100)) {
+		OutputDebugString("\nTimeoutWait in writePackets did not get ACK");
 		writeDataPacket(data);
 		if (attempts++ == 4) {
 			OutputDebugString("Giving up on writing");
@@ -349,16 +350,23 @@ void writePackets() {
 }
 boolean idleReadEnq() {
 	OutputDebugString("\nIn idleReadEnq");
+	
 	SetCommMask(hComm, EV_RXCHAR);
 	DWORD dwCommEvent = 0;
 	unsigned char buffer[2] = { 0 };
 	OVERLAPPED	osReader = { 0 };
+	
 	osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
+	if (inWrite){
+		WaitCommEvent(hComm, &dwCommEvent, NULL);
+		inWrite = false;
+	}
 	if (WaitCommEvent(hComm, &dwCommEvent, NULL)) {
 		OutputDebugString("event received");
 		if (dwCommEvent == 0) {
 			OutputDebugString("Killing thrad");
+			inWrite = true;
 			ExitThread(0);
 		}
 		do {

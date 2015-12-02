@@ -363,10 +363,11 @@ DWORD WINAPI writeThread(LPVOID hwnd) {
 	return 0;
 }
 void checkSendPriority() {
-	//Sleep(1000);
+	Sleep(3000);
 	beIdle();
 }
 void checkReceivePriority() {
+	Sleep(3000);
 	beIdle();
 }
 void acknowledgeEnq() {
@@ -512,7 +513,7 @@ BOOL readInPacket()
 							writePacket(ACK);
 							OutputDebugString("\nTHe packet is: ");
 							OutputDebugString("\n");
-							OutputDebugString((char *)readPacket);
+							AppendText(hOutput, (TCHAR *)readPacket);
 							CloseHandle(osReader.hEvent);
 							writePacket(ACK);
 							return true;

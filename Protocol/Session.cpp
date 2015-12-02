@@ -99,6 +99,19 @@ HWND CreateListView(const HWND &hwndParent)
 	return hListView;
 }
 
+/*------------------------------------------------------------------------------------------------------------------
+-- FUNCTION:	updateStatistic
+-- DATE:	    02/12/15
+-- REVISIONS:   (V1.0)
+-- DESIGNER:	Joseph Tam-Huang
+-- PROGRAMMER:  Joseph Tam-Huang
+-- INTERFACE:   void updateStatistic(HWND hList, int sent, int rcv, int drop)
+--					HWND hList
+-- RETURN:		HANDLE : the handle of the file created for writting
+--
+-- NOTES:
+-- Creates the file for storing the text ouput.
+----------------------------------------------------------------------------------------------------------------------*/
 void updateStatistic(HWND hList, int sent, int rcv, int drop) {
 	char s[10];
 	char r[10];
@@ -111,6 +124,18 @@ void updateStatistic(HWND hList, int sent, int rcv, int drop) {
 	ListView_SetItemText(hList, 2, COL_1, d);
 }
 
+/*------------------------------------------------------------------------------------------------------------------
+-- FUNCTION:	CreateFileForWriting
+-- DATE:	    02/12/15
+-- REVISIONS:   (V1.0)
+-- DESIGNER:	Joseph Tam-Huang
+-- PROGRAMMER:  Joseph Tam-Huang
+-- INTERFACE:   HANDLE CreateFileForWriting()
+-- RETURN:		HANDLE : the handle of the file created for writting
+--
+-- NOTES:
+-- Creates the file for storing the text ouput.
+----------------------------------------------------------------------------------------------------------------------*/
 HANDLE CreateFileForWriting() {
 	HANDLE hFile;
 	hFile = CreateFile("Output.txt",
@@ -128,6 +153,20 @@ HANDLE CreateFileForWriting() {
 	return hFile;
 }
 
+/*------------------------------------------------------------------------------------------------------------------
+-- FUNCTION:	writeToOutputFile
+-- DATE:	    02/12/15
+-- REVISIONS:   (V1.0)
+-- DESIGNER:	Joseph Tam-Huang
+-- PROGRAMMER:  Joseph Tam-Huang
+-- INTERFACE:   void writeToOutputFile(HANDLE writeFile, char* message)
+--			        const HAnDLE writeFile: the handle of the output file
+--					char *message: the message to write to the file
+-- RETURN:		void
+--
+-- NOTES:
+-- Writes the payload of the received packet into a file.
+----------------------------------------------------------------------------------------------------------------------*/
 void writeToOutputFile(HANDLE writeFile, char* message) {
 	DWORD dwWritten;
 	if (writeFile != NULL) {

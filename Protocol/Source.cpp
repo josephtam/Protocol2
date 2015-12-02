@@ -345,7 +345,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 		
 		PurgeComm(hComm, PURGE_RXCLEAR);
 		if (dataToRead) {
-			if (packetsOk.size() <= 1)
+			if (packetsOk.size() <= 0)
 				dataToRead = false;
 			OutputDebugString("\nStarting write thread");
 			wThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&writeThread, (LPVOID)hwnd,
@@ -432,7 +432,7 @@ void writePackets() {
 	{
 		 temp = packetsOk.front();
 	}
-	temp = temp.substr(0, temp.size() - 1);
+	//temp = temp.substr(0, temp.size());
 	
 	const unsigned char * data = reinterpret_cast<const unsigned char *> (temp.c_str());
 

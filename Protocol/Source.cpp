@@ -535,7 +535,7 @@ BOOL readInPacket()
 {
 	int attempts = 0;
 	BYTE		buffer[516] = { 0x00 };			//Byte array which will hold incoming input.
-	unsigned char		readPacket[516] = { 0x00 };		//char array that will hold a packet read in
+	unsigned char		readPacket[516] = { 0 };		//char array that will hold a packet read in
 	unsigned int index = 1;						//dynamic index for the readPacket array.
 	BOOL startPacket = false;
 	BOOL		readComplete = false;			//Flag to check if a complete packet was read.
@@ -547,7 +547,10 @@ BOOL readInPacket()
 	OVERLAPPED	osReader = { 0 };				//Contains information used in asynchronous 
 	readPacket[0] = SOH;									//(or overlapped) input and output (I/O).
 
-	
+	for (int i = 0; i < 516; i++) {
+		readPacket[i] = 0;
+		//readBuffer[i] = 0;
+	}
 	if (!SetCommMask(hComm, EV_RXCHAR)) {
 		OutputDebugString("Set comm mask failed");
 	}

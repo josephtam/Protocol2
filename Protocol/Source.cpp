@@ -378,7 +378,7 @@ DWORD WINAPI writeThread(LPVOID hwnd) {
 	OutputDebugString("\nWRITE THREAD STARTING");
 	OutputDebugString("\nTop of WRITE, sending ENQ");
 	sendEnq();
-	while (!(timeoutWait(250))) {
+	while (!(timeoutWait(550))) {
 		if (buttonPriority) {
 			writePacket(DC2);
 		}
@@ -395,19 +395,22 @@ DWORD WINAPI writeThread(LPVOID hwnd) {
 	return 0;
 }
 void checkSendPriority() {
-	//Sleep(3000);
+	
 	beIdle();
 }
 void checkReceivePriority() {
-	//Sleep(3000);
+	
 	beIdle();
 }
 void acknowledgeEnq() {
 	if (buttonPriority) {
 		writePacket(DC1);
 	}
-	writePacket(ACK);
+	else {
+		writePacket(ACK);
 
+	}
+	
 }
 void writePackets() {
 	int attempts = 0;
@@ -441,6 +444,23 @@ boolean idleReadEnq(DWORD time) {
 	osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 	if (inWrite) {
 		if (WaitForSingleObject(osReader.hEvent, time)) {
+			if (!ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader)) {
+				if (GetLastError() == ERROR_IO_PENDING) {
+					if (WaitForSingleObject(osReader.hEvent, time)) {
+						
+						inIdle = false;
+						return false;
+
+					}
+
+				}
+				if (buffer[0] == ENQ) {
+					inIdle = false;
+					inWrite = false;
+					return true;
+					//writePacket(ACK);
+				}
+			}
 			inIdle = false;
 			inWrite = false;
 			return false;

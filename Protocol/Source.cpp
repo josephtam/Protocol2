@@ -15,9 +15,6 @@
 #include <vector>
 
 
-// need these at the top:
-enum states { idle, waitPacket, waitAck, waitAck2, wait, sendState, receiveState , sendingPacket};
-states status;
 
 unsigned char depacketizedData[512];
 DWORD WINAPI readThread(LPVOID hwnd);
@@ -25,7 +22,7 @@ DWORD WINAPI readInFileThread(LPVOID hwnd);
 HANDLE wThread, rThread;
 boolean idleReadEnq(DWORD time);
 using namespace std;
-void checkPriority(states cur);
+
 static const int COMMAND_MODE = 1;
 static const int READY_TO_CONNECT_MODE = 2;
 static const int CONNECT_MODE = 3;
@@ -351,7 +348,7 @@ DWORD WINAPI readThread(LPVOID hwnd) {
 		
 		PurgeComm(hComm, PURGE_RXCLEAR);
 		if (dataToRead) {
-			if (packetsOk.size() == 1)
+			if (packetsOk.size() <= 1)
 				dataToRead = false;
 			OutputDebugString("\nStarting write thread");
 			wThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&writeThread, (LPVOID)hwnd,
@@ -433,7 +430,11 @@ void acknowledgeEnq() {
 }
 void writePackets() {
 	int attempts = 0;
-	string temp = packetsOk.front();
+	string temp;
+	if (packetsOk.size() >= 1)
+	{
+		 temp = packetsOk.front();
+	}
 	temp = temp.substr(0, temp.size() - 1);
 	
 	const unsigned char * data = reinterpret_cast<const unsigned char *> (temp.c_str());
@@ -450,7 +451,9 @@ void writePackets() {
 			break;
 		}
 	}
-	packetsOk.pop_front();
+	if (packetsOk.size() > 0) {
+		packetsOk.pop_front();
+	}
 	sent++;
 }
 boolean idleReadEnq(DWORD time) {
@@ -1141,7 +1144,7 @@ void resizeOutputWindow() {
 BOOL writeDataPacket(const unsigned char * data) {
 	unsigned char * packet = packetize(data);
 	size_t size = strlen((char *)data) < 512 ? strlen((char *)data) + 5 : strlen((char *)data) + 4;
-	if (packet[0] == NULL) {
+	if (packet == NULL) {
 		return FALSE;
 	}
 	return ConnectionWrite(hwnd, (BYTE*)packet, size);
@@ -1287,7 +1290,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 		switch (LOWORD(wParam))
 		{
 		case IDM_CONNECT:
-			status = idle;
+			
 			Mode = COMMAND_MODE;
 			SetFocus(hwnd);
 			// Do stuff when "Connect" is selected from the menu
@@ -1319,19 +1322,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 				break;
 			}
 
-			//This creates the read thread (continuous loop that reads input)
-			/*hThrd = CreateThread(NULL, 0, ConnectionRead, (LPVOID)hwnd,
-				CREATE_SUSPENDED, &ReadInput);
-			SetThreadPriority(hThrd, THREAD_PRIORITY_HIGHEST);
-			ResumeThread(hThrd);
-			*/
 			beIdle();
-			/*hThrd = CreateThread(NULL, 0, readThread, (LPVOID)hwnd,
-				CREATE_SUSPENDED, &ReadInput);
-			SetThreadPriority(hThrd, THREAD_PRIORITY_HIGHEST);
-			ResumeThread(hThrd);*/
-			//Allow for CONNECTION_MODE
-			Mode = CONNECT_MODE;
+				Mode = CONNECT_MODE;
 
 			SetWindowText(hConnectToggleBtn, DISCONNECT);
 			SetWindowLongPtr(hConnectToggleBtn, GWLP_ID, static_cast<LONG_PTR>(static_cast<DWORD_PTR>(IDM_DISCONNECT)));
@@ -1385,58 +1377,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 			break;
 		}
 		break;
-	case WM_CHAR:
-		hdc = GetDC(hwnd);     // get device context
-		switch (Mode)
-		{
-		case COMMAND_MODE:
-			OutputDebugString("Tried to press a key when in command mode.\n");
-			break;
 
-		case READY_TO_CONNECT_MODE:
-			//Connected but no output will be given.
-			OutputDebugString("Tried to press a key when it is not a secured connection.\n");
-			break;
-
-		case CONNECT_MODE:
-			//Write a character to the external device using a keyboard.
-			OutputDebugString("Pressed a key when properly connected.\n");
-
-			char temp[516];
-			sprintf_s(temp, "%c", TEXT(wParam));
-			if ((char)wParam == 'e') {
-				//sendEnq();
-				wThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&writeThread, (LPVOID)hwnd,
-					0, &wThreadId);
-				
-			}
-			else if ((char)wParam == 'a') {
-				OutputDebugString("Sending an ACK\n");
-				writePacket(ACK);
-				status = waitAck;
-			}
-			else if ((char)wParam == '1') {
-				OutputDebugString("Sending an DC1\n");
-				writePacket(DC1);
-			}
-			else if ((char)wParam == '2') {
-				OutputDebugString("Sending an DC2\n");
-				writePacket(DC2);
-			}
-			else {
-				OutputDebugString("Sending Data\n");
-				unsigned char data[] = "Successful transfer. This is a bigger string. MORE MORE MORE MORE MORE MORE MORE, OKAY.";
-				writeDataPacket(data);
-				OutputDebugString("Done sending data\n");
-			}
-
-			//ConnectionWrite(hwnd, (char*)temp);
-			break;
-		default:
-			OutputDebugString("Mode screwed up somehow in pressed key. Mode=" + Mode);
-			break;
-		}
-		break;
 	case WM_DESTROY:	// Terminate program
 		OutputDebugString("Destroyed Mode=" + Mode);
 		CloseHandle(hComm);
@@ -1448,32 +1389,3 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 	}
 	return 0;
 }
-/*
-void splitFile(HANDLE file) {
-attempts = 0;
-OutputDebugString("In splitFile");
-DWORD dwBytesRead = 0;
-const int MAX = 512;
-bool read;
-char readBuffer[MAX] = { 0 };
-read = ReadFile(file,
-readBuffer,
-MAX - 1,
-&dwBytesRead,
-0);
-OutputDebugString(readBuffer);
-if (dwBytesRead == 511) {
-OutputDebugString("This is 512");
-}
-if (read && dwBytesRead == 0)
-{
-stillWriting = false;
-
-}
-else {
-//char * packet = packetize(readBuffer);
-}
-
-
-}
-*/

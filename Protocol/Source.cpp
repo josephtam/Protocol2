@@ -1067,6 +1067,18 @@ void writingState() {
 		}
 	}
 }
+
+void readUserFile(HANDLE fHandle) {
+	char buffer[1024];
+	DWORD bytesRead = 0;
+	OVERLAPPED ol = { 0 };
+	if (fHandle != INVALID_HANDLE_VALUE) {
+		ReadFile(fHandle, buffer, sizeof(buffer), &bytesRead, &ol);
+		OutputDebugString("buffer read");
+	}
+	CloseHandle(fHandle);
+}
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 	WPARAM wParam, LPARAM lParam)
 {
@@ -1155,7 +1167,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 			OutputDebugString("display off btn or menu item clicked\n");
 			break;
 		case IDM_SELECT_FILE:
-			selectFile();
+			userFileHandle = selectFile();
+			readUserFile(userFileHandle);
 			OutputDebugString("Select File pressed\n");
 			break;
 		case IDM_EXIT:

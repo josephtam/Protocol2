@@ -23,7 +23,7 @@ unsigned char depacketizedData[512];
 DWORD WINAPI readThread(LPVOID hwnd);
 DWORD WINAPI readInFileThread(LPVOID hwnd);
 HANDLE wThread, rThread;
-boolean idleReadEnq(DWORD time);
+boolean idleReadEnq();
 using namespace std;
 void checkPriority(states cur);
 static const int COMMAND_MODE = 1;
@@ -308,24 +308,15 @@ void beIdle() {
 
 DWORD WINAPI readThread(LPVOID hwnd) {
 	int attempts = 0;
-	bool gotEnq = false;
-	if (inWrite) {
-		gotEnq = idleReadEnq((DWORD)500);
-		inWrite = false;
-	}
-	if (!gotEnq) {
-		
-		PurgeComm(hComm, PURGE_RXCLEAR);
-		if (dataToRead) {
-			if (packetsOk.size() == 1)
-				dataToRead = false;
-			wThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&writeThread, (LPVOID)hwnd,
-				0, &wThreadId);
-			inWrite = true;
+	PurgeComm(hComm, PURGE_RXCLEAR);
+	if (dataToRead){
+		if (packetsOk.size() == 1)
+			dataToRead = false;
+		wThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&writeThread, (LPVOID)hwnd,
+			0, &wThreadId);
 
-		}
 	}
-	idleReadEnq(INFINITE);
+	idleReadEnq();
 	OutputDebugString("\nBACK IN IDLE OK");
 	acknowledgeEnq();
 
@@ -371,6 +362,9 @@ void writePackets() {
 	temp = temp.substr(0, temp.size() - 1);
 	packetsOk.pop_front(); 
 	const unsigned char * data = reinterpret_cast<const unsigned char *> (temp.c_str());
+	
+	
+	
 
 	//unsigned char data[] = "Hello, this is a test. I hope it works because I really dont like this and want to sleep all day...";
 	OutputDebugString("\nIn writePackets");
@@ -385,8 +379,7 @@ void writePackets() {
 		}
 	}
 }
-boolean idleReadEnq(DWORD time) {
-	
+boolean idleReadEnq() {
 	OutputDebugString("\nIn idleReadEnq");
 	inIdle = true;
 	SetCommMask(hComm, EV_RXCHAR);
@@ -411,8 +404,7 @@ boolean idleReadEnq(DWORD time) {
 			buffer[0] = 0x00;
 			if (!ReadFile(hComm, &buffer[0], 1, &dwCommEvent, &osReader)) {
 				if (GetLastError() == ERROR_IO_PENDING) {
-					if (WaitForSingleObject(osReader.hEvent, time))
-						return false;
+					WaitForSingleObject(osReader.hEvent, INFINITE);
 				}
 
 			}
@@ -850,7 +842,7 @@ unsigned char * packetize(const unsigned char * data) {
 	unsigned char * packet;
 	int packetSize = dataSize + 4;
 
-	if (dataSize < 512) {
+	if (dataSize < 513) {
 		packetSize++; //need to add EOT
 	}
 
@@ -863,7 +855,7 @@ unsigned char * packetize(const unsigned char * data) {
 	checksum *chk = new checksum();
 	chk->clear();
 
-	for (int i = 0; i < dataSize; i++) {
+	for (int i = 0; i < dataSize - 1; i++) {
 		chk->add(data[i]);
 	}
 
@@ -873,10 +865,10 @@ unsigned char * packetize(const unsigned char * data) {
 	packet[3] = checksum[1];
 
 	int i;
-	for (i = 0; i < dataSize; i++) {
+	for (i = 0; i < dataSize - 1; i++) {
 		packet[4 + i] = data[i];
 	}
-	if (dataSize < 512) {
+	if (dataSize < 513) {
 		packet[4 + i] = EOT; //add EOT
 	}
 	return packet;

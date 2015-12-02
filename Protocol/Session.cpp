@@ -104,3 +104,33 @@ void updateStatistic(HWND hList, int rowNum, int n) {
 	sprintf_s(value, "%d", n);
 	ListView_SetItemText(hList, rowNum, COL_1, value);
 }
+
+HANDLE CreateFileForWriting() {
+	HANDLE hFile;
+	hFile = CreateFile("Output.txt",
+		GENERIC_WRITE,
+		0,
+		NULL,
+		CREATE_ALWAYS,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL
+		);
+	if (hFile == INVALID_HANDLE_VALUE) {
+		OutputDebugString("failed to create file or already exists");
+		return NULL;
+	}
+	return hFile;
+}
+
+void writeToOutputFile(HANDLE writeFile, char* message) {
+	DWORD dwWritten;
+	if (writeFile != NULL) {
+		SetFilePointer(writeFile, 0, NULL, FILE_END);
+		WriteFile(writeFile, message, strlen(message), &dwWritten, NULL);
+		OutputDebugString("wrote to file\n");
+	}
+	else {
+		OutputDebugString("Failed to write to file\n");
+	}
+
+}

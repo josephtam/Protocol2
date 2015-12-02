@@ -29,8 +29,10 @@ void checkPriority(states cur);
 static const int COMMAND_MODE = 1;
 static const int READY_TO_CONNECT_MODE = 2;
 static const int CONNECT_MODE = 3;
+static char* msg1 = "test string";
 void checkStatus(BYTE type);
 bool dataToRead = false;
+HANDLE hWriteFile;
 boolean checkForSoh();
 BOOL writePacket(BYTE type); vector<unsigned char> dataBuffer;
 void acknowledgeLine();
@@ -569,6 +571,11 @@ void waitForPacket() {
 
 }
 
+
+
+
+
+
 BOOL OpenPort(HWND hwnd)
 {
 
@@ -767,6 +774,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hprevInstance,
 		NULL);
 	ShowWindow(hwnd, nCmdShow);
 	UpdateWindow(hwnd);
+
+	hWriteFile = CreateFileForWriting();
 
 	while (GetMessage(&Msg, NULL, 0, 0))
 	{
@@ -1251,6 +1260,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 		case IDM_PRIORITY:
 			// Do stuff when "Priority" is selected from the menu
 			OutputDebugString("Priority button or menu item pressed\n");
+			writeToOutputFile(hWriteFile, msg1);
 			break;
 		case IDM_DISPLAY_ON:
 			// Allow messages to be printed onto the output window

@@ -25,3 +25,5 @@ void AppendText(const HWND &hwnd, TCHAR *newText);
 void resizeOutputWindow();
 HWND CreateListView(const HWND &hwndParent);
 void updateStatistic(HWND hList, int rowNum, int n);
+HANDLE CreateFileForWriting();
+void writeToOutputFile(HANDLE writeFile, char* message);

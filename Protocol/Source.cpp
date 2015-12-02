@@ -389,7 +389,7 @@ void acknowledgeEnq() {
 void writePackets() {
 	int attempts = 0;
 	string temp = packetsOk.front();
-	temp = temp.substr(0, temp.size());
+	temp = temp.substr(0, temp.size() - 1);
 	
 	const unsigned char * data = reinterpret_cast<const unsigned char *> (temp.c_str());
 
@@ -872,14 +872,14 @@ unsigned char * packetize(const unsigned char * data) {
 		return 0x00;
 	}
 
-
+	unsigned char * packet;
 	int packetSize = dataSize + 4;
 
 	if (dataSize < 512) {
 		packetSize++; //need to add EOT
 	}
 
-	unsigned char packet[516];
+	packet = new unsigned char[packetSize];
 
 	packet[0] = SOH; //SOH
 
@@ -1111,28 +1111,25 @@ DWORD WINAPI readInFileThread(LPVOID hwnd){
 	HANDLE hf = (HANDLE)hwnd;
 	DWORD dwBytesRead = 0;
 	const int MAX = 512;
-	
+	char readBuffer[MAX];
 	bool read;
 	while (1){
-		char readBuffer[MAX];
+		
 		for (int i = 0; i < MAX; i++) {
 			readBuffer[i] = 0;
 		}
 		dwBytesRead = 0;
 		index = 0;
 		OutputDebugString("\nA new sentence");
-
+		vector<unsigned char> ok;
 		read = ReadFile(hf,
 			readBuffer,
 			MAX - 1,
 			&dwBytesRead,
 			0);
 	//	OutputDebugString(readBuffer);
-	
 		OutputDebugString("\n");
 		if (dwBytesRead == 511) {
-			if (readBuffer[0] == 0)
-				continue;
 			OutputDebugString("512");
 			readBuffer[511] = 0;
 			string s = readBuffer;
@@ -1143,7 +1140,7 @@ DWORD WINAPI readInFileThread(LPVOID hwnd){
 		}
 		else if (dwBytesRead > 0){
 			OutputDebugString("NOT 512");
-
+			
 			string s = readBuffer;
 			readBuffer[dwBytesRead] = 0;
 			packetsOk.push_back(s);
